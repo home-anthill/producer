@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://github.com/Ks89/air-conditioner/blob/master/docs/icons/logo512.png?raw=true" alt="ks89/home-anthill" width="220">
+  <img src="https://github.com/home-anthill/docs/blob/master/icons/logo512.png?raw=true" alt="ks89/home-anthill" width="220">
   <br>
 home-anthill
   <br>

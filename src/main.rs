@@ -63,6 +63,9 @@ async fn main() {
     let mqtt_url = env::var("MQTT_URL").expect("MQTT_URL is not found.");
     let mqtt_port = env::var("MQTT_PORT").expect("MQTT_PORT is not found.");
     let mqtt_client_id = env::var("MQTT_CLIENT_ID").expect("MQTT_CLIENT_ID is not found.");
+    let mqtt_auth = env::var("MQTT_AUTH").expect("MQTT_AUTH is not found.");
+    let mqtt_user = env::var("MQTT_USER").expect("MQTT_USER is not found.");
+    let mqtt_password = env::var("MQTT_PASSWORD").expect("MQTT_PASSWORD is not found.");
     let mqtt_tls = env::var("MQTT_TLS").expect("MQTT_TLS is not found.");
     let root_ca = env::var("ROOT_CA").expect("ROOT_CA is not found.");
     let mqtt_cert_file = env::var("MQTT_CERT_FILE").expect("MQTT_CERT_FILE is not found.");
@@ -72,6 +75,9 @@ async fn main() {
     info!(target: "app", "MQTT_URL = {}", mqtt_url);
     info!(target: "app", "MQTT_PORT = {}", mqtt_port);
     info!(target: "app", "MQTT_CLIENT_ID = {}", mqtt_client_id);
+    info!(target: "app", "MQTT_AUTH = {}", mqtt_auth);
+    info!(target: "app", "MQTT_USER = {}", mqtt_user);
+    info!(target: "app", "MQTT_PASSWORD = {}", mqtt_password);
     info!(target: "app", "MQTT_TLS = {}", mqtt_tls);
     info!(target: "app", "ROOT_CA = {}", root_ca);
     info!(target: "app", "MQTT_CERT_FILE = {}", mqtt_cert_file);
@@ -156,7 +162,14 @@ async fn main() {
     });
 
     info!(target: "app", "Creating MQTT ConnectOptions...");
-    let conn_opts = build_mqtt_connect_options(&mqtt_tls, &mqtt_cert_file, &mqtt_key_file);
+    let conn_opts = build_mqtt_connect_options(
+        &mqtt_auth,
+        &mqtt_user,
+        &mqtt_password,
+        &mqtt_tls,
+        &mqtt_cert_file,
+        &mqtt_key_file,
+    );
 
     // Make the connection to the broker
     info!(target: "app", "Connecting to the MQTT server with ConnectOptions...");
@@ -170,6 +183,9 @@ async fn main() {
 }
 
 fn build_mqtt_connect_options(
+    mqtt_auth: &String,
+    mqtt_user: &String,
+    mqtt_password: &String,
     mqtt_tls: &String,
     mqtt_cert_file: &String,
     mqtt_key_file: &String,
@@ -183,6 +199,13 @@ fn build_mqtt_connect_options(
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
         .clean_session(true)
         .will_message(lwt);
+
+    if mqtt_auth == "true" {
+        info!(target: "app", "build_mqtt_connect_options - MQTT AUTH is enabled, setting username and password");
+        connect_options_builder
+            .user_name(mqtt_user)
+            .password(mqtt_password);
+    }
 
     if mqtt_tls == "true" {
         info!(target: "app", "build_mqtt_connect_options - MQTT TLS is enabled, creating ConnectOptions with certificates");

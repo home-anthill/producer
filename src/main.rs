@@ -113,7 +113,7 @@ async fn main() {
 
     // 7. Make the connection to the broker
     info!(target: "app", "Connecting to the MQTT server with ConnectOptions...");
-    while let Err(err) = try_connection(&mqtt_client, conn_opts.clone()).await {
+    while let Err(err) = mqtt_client.connect(conn_opts.clone()).await {
         error!(target: "app", "MQTT Connection error, retying in 10 seconds. Error = {:?}", err);
         tokio::time::sleep(Duration::from_millis(30000)).await;
     }
@@ -121,8 +121,14 @@ async fn main() {
 
     // 8. Subscribe to the topics
     info!(target: "app", "Subscribing to the topics...");
-    subscribe_topics(&mqtt_client).await;
-    info!(target: "app", "Subscription to the topics completed");
+    let topic_result = subscribe_topics(&mqtt_client).await;
+    match topic_result {
+        Ok(_) => info!(target: "app", "Subscription to the topics completed"),
+        Err(err) => {
+            error!(target: "app", "Cannot subscribe to topics. Error = {:?}", err);
+            process::exit(1);
+        }
+    }
 
     // 9. Wait for incoming messages
     info!(target: "app", "Waiting for incoming MQTT messages");
@@ -161,19 +167,14 @@ async fn main() {
     }
 }
 
-async fn try_connection(
+async fn subscribe_topics(
     cli: &mqtt::AsyncClient,
-    conn_opts: ConnectOptions,
 ) -> Result<paho_mqtt::ServerResponse, paho_mqtt::Error> {
-    cli.connect(conn_opts).await
-}
-
-async fn subscribe_topics(cli: &mqtt::AsyncClient) {
     let topics: Vec<String> = TOPICS.iter().map(|s| s.to_string()).collect();
     info!(target: "app", "Subscribing to MQTT topics: {:?}", topics);
     let qos = vec![QOS; topics.len()];
     // We subscribe to the topic(s) we want here.
-    cli.subscribe_many(&topics, &qos).await.unwrap();
+    cli.subscribe_many(&topics, &qos).await
 }
 
 fn build_mqtt_connect_options(
@@ -205,7 +206,7 @@ fn build_mqtt_connect_options(
 
     if mqtt_tls == "true" {
         info!(target: "app", "build_mqtt_connect_options - MQTT TLS is enabled, creating ConnectOptions with certificates");
-        let ssl_options = build_ssl_options(&mqtt_cert_file, mqtt_key_file);
+        let ssl_options = build_ssl_options(mqtt_cert_file, mqtt_key_file);
         if let Some(ssl_opt) = ssl_options {
             conn_opts = connect_options_builder.ssl_options(ssl_opt).finalize();
             info!(target: "app", "build_mqtt_connect_options - MQTT ConnectOptions with SSL created successfully");

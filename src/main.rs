@@ -1,13 +1,13 @@
 use dotenvy::dotenv;
-use log::{debug, error, info};
+use futures::{executor::block_on, stream::StreamExt};
+use log::{debug, error, info, warn};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::string::ToString;
-use std::{env, fs, thread};
+use std::{env, fs};
 use std::{process, time::Duration};
 
-use futures::executor::block_on;
 use lapin::Channel;
 use paho_mqtt as mqtt;
 use paho_mqtt::{ConnectOptions, SslOptions};
@@ -27,26 +27,6 @@ const TOPICS: &[&str] = &[
 const QOS: i32 = 0;
 
 const COMBINED_CA_FILES_PATH: &str = "./rootca_and_cert.pem";
-
-fn on_mqtt_connect_success(cli: &mqtt::AsyncClient, _msgid: u16) {
-    info!(target: "app", "MQTT Connection succeeded");
-    let topics: Vec<String> = TOPICS.iter().map(|s| s.to_string()).collect();
-    info!(target: "app", "Subscribing to MQTT topics: {:?}", topics);
-    let qos = vec![QOS; topics.len()];
-    // We subscribe to the topic(s) we want here.
-    cli.subscribe_many(&topics, &qos);
-}
-
-// Callback for a failed attempt to connect to the server. We simply sleep and then try again.
-// Note that normally we don't want to do a blocking operation or sleep
-// from  within a callback. But in this case, we know that the client is
-// *not* connected, and thus not doing anything important. So we don't worry
-// too much about stopping its callback thread.
-fn on_mqtt_connect_failure(cli: &mqtt::AsyncClient, _msgid: u16, rc: i32) {
-    error!(target: "app", "MQTT connection attempt failed with error code {}", rc);
-    thread::sleep(Duration::from_millis(5000));
-    cli.reconnect_with_callbacks(on_mqtt_connect_success, on_mqtt_connect_failure);
-}
 
 #[tokio::main]
 async fn main() {
@@ -114,30 +94,41 @@ async fn main() {
         .server_uri(mqtt_uri)
         .client_id(mqtt_client_id)
         .finalize();
-    let mqtt_client = mqtt::AsyncClient::new(create_opts).unwrap_or_else(|err| {
+    let mut mqtt_client = mqtt::AsyncClient::new(create_opts).unwrap_or_else(|err| {
         error!(target: "app", "Error creating MQTT client: {:?}", err);
         process::exit(1);
     });
-    // Define all callbacks
-    mqtt_client.set_connected_callback(|_cli: &mqtt::AsyncClient| {
-        info!(target:"app", "MQTT Connected");
-    });
-    mqtt_client.set_connection_lost_callback(|client: &mqtt::AsyncClient| {
-        // Whenever the client loses the connection.
-        // It will attempt to reconnect, and set up function callbacks to keep
-        // retrying until the connection is re-established.
-        error!(target:"app", "MQTT Connection lost! Attempting reconnect after a delay.");
-        // tokio::time::sleep(Duration::from_millis(25000)).await;
-        // async_std::task::sleep(Duration::from_millis(1000)).await;
-        thread::sleep(Duration::from_millis(5000));
-        client.reconnect_with_callbacks(on_mqtt_connect_success, on_mqtt_connect_failure);
-    });
-    mqtt_client.set_message_callback(move |_cli, msg| {
-        if let Some(msg) = msg {
+    // Get message stream before connecting.
+    let mut strm = mqtt_client.get_stream(25);
+
+    info!(target: "app", "Creating MQTT ConnectOptions...");
+    let conn_opts = build_mqtt_connect_options(
+        &mqtt_auth,
+        &mqtt_user,
+        &mqtt_password,
+        &mqtt_tls,
+        &mqtt_cert_file,
+        &mqtt_key_file,
+    );
+
+    // 7. Make the connection to the broker
+    info!(target: "app", "Connecting to the MQTT server with ConnectOptions...");
+    mqtt_client.connect(conn_opts).await.unwrap();
+    info!(target: "app", "MQTT Connection succeeded");
+
+    // 8. Subscribe to the topics
+    info!(target: "app", "Subscribing to the topics...");
+    subscribe_topics(&mqtt_client).await;
+    info!(target: "app", "Subscription to the topics completed");
+
+    // 9. Wait for incoming messages
+    info!(target: "app", "Waiting for incoming MQTT messages");
+    while let Some(msg_opt) = strm.next().await {
+        if let Some(msg) = msg_opt {
             debug!(target: "app", "MQTT message received");
             let topic: Topic = Topic::new(msg.topic());
             debug!(target: "app", "MQTT message topic = {}", &topic);
-            let payload_str = match std::str::from_utf8(msg.payload()) {
+            let payload_str: &str = match std::str::from_utf8(msg.payload()) {
                 Ok(res) => {
                     debug!(target: "app", "MQTT utf8 payload_str: {}", res);
                     res
@@ -157,29 +148,22 @@ async fn main() {
                 });
             }
         } else {
-            error!(target: "app", "MQTT message is not valid");
+            // msg_opt="None" means we were disconnected. Try to reconnect...
+            warn!(target: "app", "Lost connection. Attempting reconnect in 5 seconds...");
+            while let Err(err) = mqtt_client.reconnect().await {
+                error!(target: "app", "Error reconnecting: {}, retrying in 5 seconds...", err);
+                tokio::time::sleep(Duration::from_millis(5000)).await;
+            }
         }
-    });
-
-    info!(target: "app", "Creating MQTT ConnectOptions...");
-    let conn_opts = build_mqtt_connect_options(
-        &mqtt_auth,
-        &mqtt_user,
-        &mqtt_password,
-        &mqtt_tls,
-        &mqtt_cert_file,
-        &mqtt_key_file,
-    );
-
-    // Make the connection to the broker
-    info!(target: "app", "Connecting to the MQTT server with ConnectOptions...");
-    mqtt_client.connect_with_callbacks(conn_opts, on_mqtt_connect_success, on_mqtt_connect_failure);
-
-    // 6. Wait for incoming messages
-    info!(target: "app", "Waiting for incoming MQTT messages");
-    loop {
-        thread::sleep(Duration::from_millis(1000));
     }
+}
+
+async fn subscribe_topics(cli: &mqtt::AsyncClient) {
+    let topics: Vec<String> = TOPICS.iter().map(|s| s.to_string()).collect();
+    info!(target: "app", "Subscribing to MQTT topics: {:?}", topics);
+    let qos = vec![QOS; topics.len()];
+    // We subscribe to the topic(s) we want here.
+    cli.subscribe_many(&topics, &qos).await.unwrap();
 }
 
 fn build_mqtt_connect_options(
@@ -197,7 +181,9 @@ fn build_mqtt_connect_options(
     let connect_options_builder = new_con_builder
         .keep_alive_interval(Duration::from_secs(20))
         .mqtt_version(mqtt::MQTT_VERSION_3_1_1)
-        .clean_session(true)
+        // Using a "persistent" (non-clean) session
+        // so the broker keeps subscriptions and messages through reconnects
+        .clean_session(false)
         .will_message(lwt);
 
     if mqtt_auth == "true" {

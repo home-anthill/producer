@@ -113,7 +113,10 @@ async fn main() {
 
     // 7. Make the connection to the broker
     info!(target: "app", "Connecting to the MQTT server with ConnectOptions...");
-    mqtt_client.connect(conn_opts).await.unwrap();
+    while let Err(err) = try_connection(&mqtt_client, conn_opts.clone()).await {
+        error!(target: "app", "MQTT Connection error, retying in 10 seconds. Error = {:?}", err);
+        tokio::time::sleep(Duration::from_millis(30000)).await;
+    }
     info!(target: "app", "MQTT Connection succeeded");
 
     // 8. Subscribe to the topics
@@ -158,6 +161,13 @@ async fn main() {
     }
 }
 
+async fn try_connection(
+    cli: &mqtt::AsyncClient,
+    conn_opts: ConnectOptions,
+) -> Result<paho_mqtt::ServerResponse, paho_mqtt::Error> {
+    cli.connect(conn_opts).await
+}
+
 async fn subscribe_topics(cli: &mqtt::AsyncClient) {
     let topics: Vec<String> = TOPICS.iter().map(|s| s.to_string()).collect();
     info!(target: "app", "Subscribing to MQTT topics: {:?}", topics);
@@ -176,7 +186,7 @@ fn build_mqtt_connect_options(
 ) -> ConnectOptions {
     // Define the set of options for the connection
     let lwt = mqtt::Message::new("test", "Subscriber lost connection", 1);
-    let conn_opts: ConnectOptions;
+    let mut conn_opts: ConnectOptions = ConnectOptions::new();
     let mut new_con_builder = mqtt::ConnectOptionsBuilder::new();
     let connect_options_builder = new_con_builder
         .keep_alive_interval(Duration::from_secs(20))

@@ -12,8 +12,6 @@ use thiserror::Error;
 // custom error
 #[derive(Error, Debug)]
 pub enum AmqpError {
-    #[error("amqp_client queue error")]
-    Queue(lapin::Error),
     #[error("amqp_client publish error")]
     Publish(lapin::Error),
     #[error("amqp_client not initialized error")]
@@ -26,6 +24,7 @@ pub struct AmqpClient {
     connecting: bool,
     connection: Option<Connection>,
     channel: Option<Channel>,
+    queue: Option<Queue>,
     amqp_uri: String,
     amqp_queue_name: String,
 }
@@ -36,6 +35,7 @@ impl AmqpClient {
             connecting: false,
             connection: None,
             channel: None,
+            queue: None,
             amqp_uri,
             amqp_queue_name,
         }
@@ -47,7 +47,7 @@ impl AmqpClient {
         self.connecting = true;
         self.create_connection().await;
         self.create_channel().await.unwrap();
-        self.create_queue().await.unwrap();
+        self.declare_queue().await.unwrap();
         self.connecting = false;
         info!(target: "app", "connect_with_retry_loop - AMQP connection done!");
     }
@@ -80,12 +80,14 @@ impl AmqpClient {
     }
 
     pub fn is_connected(&self) -> bool {
-        // check if you are calling this method on an initialized amqp_client instance (with both connection and channel)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, true);
+        // check if you are calling this method on an initialized amqp_client instance
+        // (with both connection, channel and queue)
+        let init_result: Result<(), AmqpError> = self.is_initialized(true, true, true);
         if init_result.is_err() {
             return false;
         }
-        self.channel.as_ref().unwrap().status().connected()
+        self.connection.as_ref().unwrap().status().connected()
+            && self.channel.as_ref().unwrap().status().connected()
     }
 
     async fn create_connection(&mut self) {
@@ -115,7 +117,7 @@ impl AmqpClient {
     async fn create_channel(&mut self) -> Result<(), AmqpError> {
         info!(target: "app", "create_channel - creating AMQP channel...");
         // check if you are calling this method on an initialized amqp_client instance (with ONLY connection)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, false);
+        let init_result: Result<(), AmqpError> = self.is_initialized(true, false, false);
         if init_result.is_err() {
             return Err(init_result.unwrap_err());
         }
@@ -136,36 +138,46 @@ impl AmqpClient {
     }
 
     // private method that must be called after both create_connection() and create_channel()
-    async fn create_queue(&mut self) -> Result<Queue, AmqpError> {
-        info!(target: "app", "create_queue - creating AMQP queue...");
-        // check if you are calling this method on an initialized amqp_client instance (with both connection and channel)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, true);
+    async fn declare_queue(&mut self) -> Result<(), AmqpError> {
+        info!(target: "app", "declare_queue - creating AMQP queue...");
+        // check if you are calling this method on an initialized amqp_client instance
+        // (with both connection and channel, but not queue)
+        let init_result: Result<(), AmqpError> = self.is_initialized(true, true, false);
         if init_result.is_err() {
             return Err(init_result.unwrap_err());
         }
-        let queue_result: lapin::Result<Queue> = self
-            .channel
-            .as_ref()
-            .unwrap()
-            .queue_declare(
-                &self.amqp_queue_name,
-                QueueDeclareOptions::default(),
-                FieldTable::default(),
-            )
-            .await;
-        return match queue_result {
-            Ok(queue) => {
-                debug!(target: "app", "create_queue - declared queue = {:?}", queue);
-                Ok(queue)
-            }
-            Err(err) => {
-                error!(target: "app", "create_queue - cannot create AMQP queue {:?}", err);
-                Err(AmqpError::Queue(err))
-            }
+        self.queue = loop {
+            match self
+                .channel
+                .as_ref()
+                .unwrap()
+                .queue_declare(
+                    &self.amqp_queue_name,
+                    QueueDeclareOptions::default(),
+                    FieldTable::default(),
+                )
+                .await
+            {
+                Ok(channel) => {
+                    info!(target: "app", "declare_queue - AMQP queue created");
+                    break Some(channel);
+                }
+                Err(err) => {
+                    error!(target: "app", "declare_queue - cannot create AMQP queue, retrying in 10 seconds. Err = {:?}", err);
+                    tokio::time::sleep(Duration::from_millis(10000)).await;
+                    ()
+                }
+            };
         };
+        Ok(())
     }
 
-    fn is_initialized(&self, check_connection: bool, check_channel: bool) -> Result<(), AmqpError> {
+    fn is_initialized(
+        &self,
+        check_connection: bool,
+        check_channel: bool,
+        check_queue: bool,
+    ) -> Result<(), AmqpError> {
         if check_connection && self.connection.is_none() {
             error!(target: "app", "is_initialized - amqp_client connection not initialized. You must call AmqpClient::new()");
             return Err(AmqpError::Uninitialized(String::from(
@@ -176,6 +188,12 @@ impl AmqpClient {
             error!(target: "app", "is_initialized - amqp_client channel not initialized. You must call AmqpClient::new()");
             return Err(AmqpError::Uninitialized(String::from(
                 "amqp_client channel not initialized. You must call AmqpClient::new()",
+            )));
+        }
+        if check_queue && self.queue.is_none() {
+            error!(target: "app", "is_initialized - amqp_client queue not initialized. You must call AmqpClient::new()");
+            return Err(AmqpError::Uninitialized(String::from(
+                "amqp_client queue not initialized. You must call AmqpClient::new()",
             )));
         }
         Ok(())

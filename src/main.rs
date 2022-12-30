@@ -1,6 +1,8 @@
 use dotenvy::dotenv;
 use futures::{executor::block_on, stream::StreamExt};
 use log::{debug, error, info, warn};
+use paho_mqtt as mqtt;
+use paho_mqtt::{ConnectOptions, SslOptions};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -8,11 +10,7 @@ use std::string::ToString;
 use std::{env, fs};
 use std::{process, time::Duration};
 
-use lapin::Channel;
-use paho_mqtt as mqtt;
-use paho_mqtt::{ConnectOptions, SslOptions};
-
-use producer::amqp::{amqp_connect, publish_message};
+use producer::amqp::AmqpClient;
 use producer::models::get_msq_byte;
 use producer::models::topic::Topic;
 
@@ -25,7 +23,6 @@ const TOPICS: &[&str] = &[
     "sensors/+/airpressure",
 ];
 const QOS: i32 = 0;
-
 const COMBINED_CA_FILES_PATH: &str = "./rootca_and_cert.pem";
 
 #[tokio::main]
@@ -65,13 +62,8 @@ async fn main() {
 
     // 4. Init RabbitMQ
     info!(target: "app", "Initializing RabbitMQ");
-    let channel: Channel = match amqp_connect(amqp_uri.as_str(), amqp_queue_name.as_str()).await {
-        Ok(channel) => channel,
-        Err(err) => {
-            error!(target: "app", "Cannot create AMQP channel. Err = {:?}", err);
-            return;
-        }
-    };
+    let mut amqp_client: AmqpClient = AmqpClient::new(amqp_uri.clone(), amqp_queue_name.clone());
+    amqp_client.connect_with_retry_loop().await;
 
     // 5. Create CA file in 'COMBINED_CA_FILES_PATH'
     // merging 'root_ca' and 'mqtt_cert_file',
@@ -148,19 +140,32 @@ async fn main() {
                 }
             };
             let msg_byte: Vec<u8> = get_msq_byte(&topic, payload_str);
-            if !msg_byte.is_empty() {
-                // send via AMQP
-                debug!(target: "app", "Publishing message via AMQP...");
-                block_on(async {
-                    publish_message(&channel, amqp_queue_name.as_str(), msg_byte).await;
-                    info!(target: "app", "AMQP message published");
-                });
+            if msg_byte.is_empty() {
+                debug!(target: "app", "Empty msg_byte received");
+                continue;
             }
+            // if msg_byte is not empty
+            block_on(async {
+                if !amqp_client.is_connected() {
+                    debug!(target: "app", "AMQP channel is not connected, reconnecting...");
+                    amqp_client.connect_with_retry_loop().await;
+                }
+                debug!(target: "app", "Publishing message via AMQP...");
+                // send via AMQP
+                match amqp_client.publish_message(msg_byte).await {
+                    Ok(_) => {
+                        debug!(target: "app", "AMQP message published to queue {}", amqp_queue_name);
+                    }
+                    Err(err) => {
+                        error!(target: "app", "Cannot publish AMQP message to queue {}. Err ={:?}", amqp_queue_name, err);
+                    }
+                };
+            });
         } else {
             // msg_opt="None" means we were disconnected. Try to reconnect...
             warn!(target: "app", "Lost connection. Attempting reconnect in 5 seconds...");
             while let Err(err) = mqtt_client.reconnect().await {
-                error!(target: "app", "Error reconnecting: {}, retrying in 5 seconds...", err);
+                error!(target: "app", "Error reconnecting: {:?}, retrying in 5 seconds...", err);
                 tokio::time::sleep(Duration::from_millis(5000)).await;
             }
         }

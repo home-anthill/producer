@@ -18,6 +18,7 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
+thiserror = "1.0"
 lapin = "^2.1.1"
 tokio = { version = "^1.23.0", features = ["full"] }
 tokio-executor-trait = "^2.1.0"

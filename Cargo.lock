@@ -808,6 +808,7 @@ dependencies = [
  "paho-mqtt",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tokio-executor-trait",
  "tokio-reactor-trait",

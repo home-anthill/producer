@@ -20,7 +20,7 @@ panic = "abort"
 [dependencies]
 thiserror = "1.0"
 lapin = "^2.1.1"
-tokio = { version = "^1.23.1", features = ["full"] }
+tokio = { version = "^1.24.2", features = ["full"] }
 tokio-executor-trait = "^2.1.0"
 tokio-reactor-trait = "^1.1.0"
 paho-mqtt = "^0.11.1"

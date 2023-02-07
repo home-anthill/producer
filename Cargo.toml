@@ -19,15 +19,17 @@ panic = "abort"
 
 [dependencies]
 thiserror = "1.0"
+anyhow = "1.0"
 lapin = "^2.1.1"
 tokio = { version = "^1.23.1", features = ["full"] }
 tokio-executor-trait = "^2.1.0"
 tokio-reactor-trait = "^1.1.0"
-paho-mqtt = "^0.11.1"
+paho-mqtt = "0.12.0"
 libc = "0.2"
 log = "^0.4.17"
 log4rs = { version = "^1.2.0", features = ["console_appender", "rolling_file_appender"] }
 dotenvy = "^0.15.5"
+envy = "^0.4"
 futures = "^0.3.25"
 futures-lite = "^1.12.0"
 
@@ -40,3 +42,4 @@ serde = { version = "^1.0", features = ["derive"] }
 # Each data format lives in its own crate; the sample code below uses JSON
 # but you may be using a different one.
 serde_json = "^1.0"
+async-trait = "0.1.64"

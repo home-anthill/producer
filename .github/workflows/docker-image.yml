@@ -48,7 +48,11 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/.ci
           cd ${{ github.workspace }}/.ci
-          mosquitto_passwd -b -c password_file mosquser Password1!
+          
+          cat << EOF | tee -a password_file > /dev/null
+          mosquser:$7$101$IqUddG4dGEemgYF7$97VegcYUg4A9P7qZ+cA5Y5vBhZvsBsLIi8EgLS8aR9VeFB9ZADN+YTGgg8MFMlB40IEl9fiAIxAEDlid7MVXQA==
+          EOF
+      
           cat << EOF | tee -a mosquitto-nossl-auth.conf > /dev/null
           persistence true
           persistence_location /mosquitto/data/

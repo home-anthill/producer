@@ -84,7 +84,7 @@ jobs:
           # sudo mv password_file /etc/mosquitto/password_file
           # sudo systemctl enable mosquitto
           # sudo systemctl start mosquitto
-          mosquitto_pub --version
+          # mosquitto_pub --version
           # mosquitto_sub --version
           echo "Installing dependencies"
           make deps-ci

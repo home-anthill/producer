@@ -77,8 +77,7 @@ jobs:
           container-name: 'rabbitmq'
       - name: Run tests
         run: |
-          apt update -y
-          apt install mosquitto mosquitto-clients -y
+          apt-get install mosquitto mosquitto-clients -y
           mosquitto_passwd -b -c password_file mosquser Password1!
           mv password_file /etc/mosquitto/password_file
           systemctl enable mosquitto

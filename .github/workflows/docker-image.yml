@@ -44,18 +44,18 @@ jobs:
           override: true
       - name: Install Make
         run: sudo apt-get install -y make
-      - name: Add Mosquitto configuration
-        run: |               
-          cat << EOF | tee -a /mosquitto/config/mosquitto.conf > /dev/null
-          persistence true
-          persistence_location /mosquitto/data/
-          allow_anonymous false
-          connection_messages true
-          log_type all
-          listener 1883
-
-          password_file /etc/mosquitto/password_file
-          EOF
+#      - name: Add Mosquitto configuration
+#        run: |
+#          cat << EOF | tee -a /mosquitto/config/mosquitto.conf > /dev/null
+#          persistence true
+#          persistence_location /mosquitto/data/
+#          allow_anonymous false
+#          connection_messages true
+#          log_type all
+#          listener 1883
+#
+#          password_file /etc/mosquitto/password_file
+#          EOF
 #          chmod 660 mosquitto-nossl-auth.conf
 #      - name: Install and start Mosquitto
 #        uses: namoshek/mosquitto-github-action@v1

@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get install -y make
       - name: Add Mosquitto configuration
         run: |               
-          cat << EOF | tee -a mosquitto-nossl-auth.conf > /dev/null
+          cat << EOF | tee -a /mosquitto/config/mosquitto.conf > /dev/null
           persistence true
           persistence_location /mosquitto/data/
           allow_anonymous false
@@ -56,7 +56,7 @@ jobs:
 
           password_file /etc/mosquitto/password_file
           EOF
-          chmod 660 mosquitto-nossl-auth.conf
+#          chmod 660 mosquitto-nossl-auth.conf
 #      - name: Install and start Mosquitto
 #        uses: namoshek/mosquitto-github-action@v1
 #        with:
@@ -66,21 +66,22 @@ jobs:
 #          config: ${{ github.workspace }}/.ci/mosquitto-nossl-auth.conf
 #          password-file: ${{ github.workspace}}/.ci/password_file
 #          container-name: 'mqtt'
-      - name: Install and start RabbitMQ
-        uses: namoshek/rabbitmq-github-action@v1
-        with:
-          version: '3.8.9'
-          ports: '8080:15672 5672:5672'
-#          certificates: ${{ github.workspace }}/.ci/tls-certificates
-#          config: ${{ github.workspace }}/.ci/rabbitmq.conf
-#          definitions: ${{ github.workspace }}/.ci/definitions.json
-          container-name: 'rabbitmq'
+#      - name: Install and start RabbitMQ
+#        uses: namoshek/rabbitmq-github-action@v1
+#        with:
+#          version: '3.8.9'
+#          ports: '8080:15672 5672:5672'
+##          certificates: ${{ github.workspace }}/.ci/tls-certificates
+##          config: ${{ github.workspace }}/.ci/rabbitmq.conf
+##          definitions: ${{ github.workspace }}/.ci/definitions.json
+#          container-name: 'rabbitmq'
       - name: Run tests
         run: |
           sudo apt-get update -y
-          sudo apt-get install mosquitto mosquitto-clients -y
-          mosquitto_passwd -b -c password_file mosquser Password1!
-          sudo mv password_file /etc/mosquitto/password_file
+          sudo apt-get install mosquitto-clients -y
+          echo "installed!!!"
+          # mosquitto_passwd -b -c password_file mosquser Password1!
+          # sudo mv password_file /etc/mosquitto/password_file
           # sudo systemctl enable mosquitto
           # sudo systemctl start mosquitto
           mosquitto_pub --version

@@ -80,9 +80,9 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install mosquitto mosquitto-clients -y
           mosquitto_passwd -b -c password_file mosquser Password1!
-          mv password_file /etc/mosquitto/password_file
-          systemctl enable mosquitto
-          systemctl start mosquitto
+          sudo mv password_file /etc/mosquitto/password_file
+          sudo systemctl enable mosquitto
+          sudo systemctl start mosquitto
           mosquitto_pub --version
           mosquitto_sub --version
           echo "Installing dependencies"

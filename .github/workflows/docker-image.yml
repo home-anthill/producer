@@ -45,14 +45,7 @@ jobs:
       - name: Install Make
         run: sudo apt-get install -y make
       - name: Add Mosquitto configuration
-        run: |
-          mkdir -p ${{ github.workspace }}/.ci
-          cd ${{ github.workspace }}/.ci
-          
-          cat << EOF | tee -a password_file > /dev/null
-          mosquser:$7$101$IqUddG4dGEemgYF7$97VegcYUg4A9P7qZ+cA5Y5vBhZvsBsLIi8EgLS8aR9VeFB9ZADN+YTGgg8MFMlB40IEl9fiAIxAEDlid7MVXQA==
-          EOF
-      
+        run: |               
           cat << EOF | tee -a mosquitto-nossl-auth.conf > /dev/null
           persistence true
           persistence_location /mosquitto/data/
@@ -61,18 +54,18 @@ jobs:
           log_type all
           listener 1883
 
-          password_file ${{ github.workspace }}/.ci/password_file
+          password_file /etc/mosquitto/password_file
           EOF
           chmod 660 mosquitto-nossl-auth.conf
-      - name: Install and start Mosquitto
-        uses: namoshek/mosquitto-github-action@v1
-        with:
-          version: '1.6'
-          ports: '1883:1883 8883:8883'
-#          certificates: ${{ github.workspace }}/.ci/tls-certificates
-          config: ${{ github.workspace }}/.ci/mosquitto-nossl-auth.conf
-          password-file: ${{ github.workspace}}/.ci/password_file
-          container-name: 'mqtt'
+#      - name: Install and start Mosquitto
+#        uses: namoshek/mosquitto-github-action@v1
+#        with:
+#          version: '1.6'
+#          ports: '1883:1883 8883:8883'
+##          certificates: ${{ github.workspace }}/.ci/tls-certificates
+#          config: ${{ github.workspace }}/.ci/mosquitto-nossl-auth.conf
+#          password-file: ${{ github.workspace}}/.ci/password_file
+#          container-name: 'mqtt'
       - name: Install and start RabbitMQ
         uses: namoshek/rabbitmq-github-action@v1
         with:
@@ -84,6 +77,12 @@ jobs:
           container-name: 'rabbitmq'
       - name: Run tests
         run: |
+          apt update -y
+          apt install mosquitto mosquitto-clients -y
+          mosquitto_passwd -b -c password_file mosquser Password1!
+          mv password_file /etc/mosquitto/password_file
+          systemctl enable mosquitto
+          systemctl start mosquitto
           mosquitto_pub --version
           mosquitto_sub --version
           echo "Installing dependencies"

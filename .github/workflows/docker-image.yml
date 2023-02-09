@@ -78,12 +78,14 @@ jobs:
       - name: Run tests
         run: |
           sudo apt-get update -y
-          sudo apt-get install mosquitto-clients -y
+          sudo apt-get install mosquitto mosquitto-clients -y
           echo "installed!!!"
-          # mosquitto_passwd -b -c password_file mosquser Password1!
+          mosquitto_passwd -b -c password_file mosquser Password1!
           # sudo mv password_file /etc/mosquitto/password_file
           # sudo systemctl enable mosquitto
           # sudo systemctl start mosquitto
+          # for unknown reasons the two mosquitto_* commands returns some error code
+          # that force github actions job to fail. With `|| true` I can ignore that error.
           mosquitto_pub --version || true
           mosquitto_sub --version || true
           cp .env_template .env

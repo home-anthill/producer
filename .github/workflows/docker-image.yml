@@ -75,7 +75,7 @@ jobs:
 ##          config: ${{ github.workspace }}/.ci/rabbitmq.conf
 ##          definitions: ${{ github.workspace }}/.ci/definitions.json
 #          container-name: 'rabbitmq'
-      - name: Run tests
+      - name: Install and start Mosquitto
         run: |
           sudo apt-get update -y
           sudo apt-get install mosquitto mosquitto-clients -y
@@ -88,6 +88,8 @@ jobs:
           # that force github actions job to fail. With `|| true` I can ignore that error.
           mosquitto_pub --version || true
           mosquitto_sub --version || true
+      - name: Run tests
+        run: |
           cp .env_template .env
           echo "Installing dependencies"
           make deps-ci

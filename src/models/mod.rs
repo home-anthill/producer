@@ -13,7 +13,8 @@ pub mod notification;
 pub mod payload_trait;
 pub mod topic;
 
-pub fn get_msq_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
+pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
+    debug!(target: "app", "payload_str: {}", payload_str);
     let msg_byte: Vec<u8> = match topic.feature.as_str() {
         "temperature" => message_payload_to_bytes::<Temperature>(payload_str, topic),
         "humidity" => message_payload_to_bytes::<Humidity>(payload_str, topic),
@@ -49,3 +50,20 @@ where
         }
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use crate::models::get_msg_byte;
+//     use crate::models::topic::Topic;
+//     use log::debug;
+//
+//     #[test]
+//     fn greater_than_100() {
+//         let topic = Topic::new("sensors/246e3256-f0dd-4fcb-82c5-ee20c2267eeb/temperature");
+//         let byte_arr = get_msg_byte(
+//             &topic,
+//             "{\"uuid\": \"246e3256-f0dd-4fcb-82c5-ee20c2267eeb\",\"apiToken\": \"473a4861-632b-4915-b01e-cf1d418966c6\",\"payload\": {\"value\": 12}}",
+//         );
+//         debug!(target: "app", "byte_arr = {:?}", byte_arr);
+//     }
+// }

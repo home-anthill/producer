@@ -1,15 +1,16 @@
+use log::{debug, error, info};
+use std::string::String;
+use std::time::Duration;
+
 use lapin::publisher_confirm::PublisherConfirm;
 use lapin::{
     options::{BasicPublishOptions, QueueDeclareOptions},
     types::FieldTable,
     BasicProperties, Channel, Connection, ConnectionProperties, Queue,
 };
-use log::{debug, error, info};
-use std::string::String;
-use std::time::Duration;
 use thiserror::Error;
 
-// custom error
+// custom error, based on 'thiserror' library
 #[derive(Error, Debug)]
 pub enum AmqpError {
     #[error("amqp_client publish error")]
@@ -25,8 +26,8 @@ pub struct AmqpClient {
     connection: Option<Connection>,
     channel: Option<Channel>,
     queue: Option<Queue>,
-    amqp_uri: String,
-    amqp_queue_name: String,
+    pub amqp_uri: String,
+    pub amqp_queue_name: String,
 }
 
 impl AmqpClient {
@@ -104,12 +105,11 @@ impl AmqpClient {
                 Err(err) => {
                     error!(target: "app", "create_connection - cannot create AMQP connection, retrying in 10 seconds. Err = {:?}", err);
                     tokio::time::sleep(Duration::from_millis(10000)).await;
-                    ()
                 }
             };
         };
         self.connection.as_ref().unwrap().on_error(|err| {
-            error!(target: "app", "amqp_connect - AMQP connection error = {:?}", err);
+            error!(target: "app", "create_connection - AMQP connection error = {:?}", err);
         });
     }
 
@@ -130,7 +130,6 @@ impl AmqpClient {
                 Err(err) => {
                     error!(target: "app", "create_channel - cannot create AMQP channel, retrying in 10 seconds. Err = {:?}", err);
                     tokio::time::sleep(Duration::from_millis(10000)).await;
-                    ()
                 }
             };
         };
@@ -165,7 +164,6 @@ impl AmqpClient {
                 Err(err) => {
                     error!(target: "app", "declare_queue - cannot create AMQP queue, retrying in 10 seconds. Err = {:?}", err);
                     tokio::time::sleep(Duration::from_millis(10000)).await;
-                    ()
                 }
             };
         };

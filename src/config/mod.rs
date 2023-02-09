@@ -1,0 +1,46 @@
+use log::info;
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub struct Env {
+    pub amqp_uri: String,
+    pub amqp_queue_name: String,
+    pub mqtt_url: String,
+    pub mqtt_port: u16,
+    pub mqtt_client_id: String,
+    pub mqtt_auth: bool,
+    pub mqtt_user: String,
+    pub mqtt_password: String,
+    pub mqtt_tls: bool,
+    pub root_ca: String,
+    pub mqtt_cert_file: String,
+    pub mqtt_key_file: String,
+}
+
+pub fn print_env(env: &Env) {
+    let amqp_uri = env.amqp_uri.clone();
+    let amqp_queue_name = env.amqp_queue_name.clone();
+    let mqtt_url = env.mqtt_url.clone();
+    let mqtt_port = env.mqtt_port;
+    let mqtt_client_id = env.mqtt_client_id.clone();
+    let mqtt_auth = env.mqtt_auth;
+    let mqtt_user = env.mqtt_user.clone();
+    let mqtt_password = env.mqtt_password.clone();
+    let mqtt_tls = env.mqtt_tls;
+    let root_ca = env.root_ca.clone();
+    let mqtt_cert_file = env.mqtt_cert_file.clone();
+    let mqtt_key_file = env.mqtt_key_file.clone();
+    info!(target: "app", "env = {:?}", env);
+    info!(target: "app", "amqp_uri = {}", amqp_uri);
+    info!(target: "app", "amqp_queue_name = {}", amqp_queue_name);
+    info!(target: "app", "mqtt_url = {}", mqtt_url);
+    info!(target: "app", "mqtt_port = {}", mqtt_port);
+    info!(target: "app", "mqtt_client_id = {}", mqtt_client_id);
+    info!(target: "app", "mqtt_auth = {}", mqtt_auth);
+    info!(target: "app", "mqtt_user = {}", mqtt_user);
+    info!(target: "app", "mqtt_password = {}", mqtt_password);
+    info!(target: "app", "mqtt_tls = {}", mqtt_tls);
+    info!(target: "app", "root_ca = {}", root_ca);
+    info!(target: "app", "mqtt_cert_file = {}", mqtt_cert_file);
+    info!(target: "app", "mqtt_key_file = {}", mqtt_key_file);
+}

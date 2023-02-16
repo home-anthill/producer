@@ -1,8 +1,8 @@
-use log::{error, info};
 use std::string::String;
 use std::time::Duration;
 
 use futures::stream::StreamExt;
+use log::{error, info};
 use paho_mqtt::{AsyncClient, AsyncReceiver, ConnectOptions, Message, ServerResponse};
 
 use crate::mqtt::mqtt_options::MqttOptions;
@@ -40,7 +40,7 @@ impl MqttClient {
     }
 
     pub async fn subscribe(&mut self, topics_list: &[&str]) -> Result<(), paho_mqtt::Error> {
-        info!(target: "app", "subscribe - Subscribing to the topics...");
+        info!(target: "app", "subscribe - Subscribing to the topics: {:?}", topics_list);
 
         let topics: Vec<String> = topics_list.iter().map(|s| s.to_string()).collect();
         info!(target: "app", "subscribe - Subscribing to MQTT topics: {:?}", topics);
@@ -60,5 +60,9 @@ impl MqttClient {
 
     pub async fn get_next_message(&mut self) -> Option<Option<Message>> {
         self.message_stream.next().await
+    }
+
+    pub async fn disconnect(&mut self) -> paho_mqtt::Result<ServerResponse> {
+        self.client.disconnect(None).await
     }
 }

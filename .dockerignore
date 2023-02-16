@@ -7,3 +7,4 @@ producer-localhost-1883
 .dockerignore
 Dockerfile
 .env
+coverage

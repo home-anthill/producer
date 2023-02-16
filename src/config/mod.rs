@@ -1,3 +1,4 @@
+use dotenvy::dotenv;
 use log::info;
 use serde::Deserialize;
 
@@ -17,7 +18,19 @@ pub struct Env {
     pub mqtt_key_file: String,
 }
 
-pub fn print_env(env: &Env) {
+pub fn init() -> Env {
+    // Init logger if not in testing environment
+    let _ = log4rs::init_file("log4rs.yaml", Default::default());
+    info!(target: "app", "Starting application...");
+    // Load the .env file
+    dotenv().ok();
+    let env = envy::from_env::<Env>().ok().unwrap();
+    // Print .env vars
+    print_env(&env);
+    env
+}
+
+fn print_env(env: &Env) {
     let amqp_uri = env.amqp_uri.clone();
     let amqp_queue_name = env.amqp_queue_name.clone();
     let mqtt_url = env.mqtt_url.clone();

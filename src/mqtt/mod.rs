@@ -1,22 +1,13 @@
-pub mod mqtt_client;
-pub mod mqtt_config;
-pub mod mqtt_options;
-
 use log::{debug, error};
-use std::string::String;
-
 use paho_mqtt::Message;
-use thiserror::Error;
+use std::string::String;
 
 use crate::models::get_msg_byte;
 use crate::models::topic::Topic;
 
-// custom error, based on 'thiserror' library
-#[derive(Error, Debug)]
-pub enum MqttError {
-    #[error("file {0} not found error")]
-    FileNotFound(String),
-}
+pub mod mqtt_client;
+pub mod mqtt_config;
+pub mod mqtt_options;
 
 const COMBINED_CA_FILES_PATH: &str = "./rootca_and_cert.pem";
 
@@ -35,8 +26,69 @@ fn get_string_payload(msg: &Message) -> String {
             res.to_string()
         }
         Err(err) => {
+            // this shouldn't happen, because payload in Message is a Vec<u8>
             error!(target: "app", "get_string_payload - Cannot read MQTT message payload as utf8. Error = {:?}", err);
             "".to_string()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::init;
+    use crate::models::get_msg_byte;
+    use crate::models::topic::Topic;
+    use crate::mqtt::{get_bytes_from_payload, get_string_payload};
+    use log::debug;
+    use paho_mqtt::Message;
+    use pretty_assertions::assert_eq;
+    use serde::Serialize;
+    use serde_json::json;
+    use std::str::from_utf8;
+
+    fn get_expected_json_string<T: Serialize>(uuid: &str, api_token: &str, value: T, topic: &Topic) -> String {
+        json!({
+            "uuid": uuid,
+            "apiToken": api_token,
+            "topic": {
+                "family": topic.family,
+                "deviceId": topic.device_id,
+                "feature": topic.feature
+            },
+            "payload": {
+                "value": value
+            }
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn ok_get_bytes_from_payload() {
+        // init logger and env
+        let _ = init();
+
+        // create a paho_mqtt::Message
+        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
+        let sensor_type = "temperature";
+        let value = 12.23;
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
+        let msg_payload = r#"{"uuid":""#.to_owned()
+            + uuid
+            + r#"", "apiToken":""#
+            + api_token
+            + r#"","payload":{"value":"#
+            + value.to_string().as_str()
+            + r#"}}"#;
+        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload.as_str());
+        let message = Message::new(format!("sensors/{}/{}", uuid, sensor_type), msg_byte_arr, 0);
+
+        // call function get_bytes_from_payload
+        let bytes = get_bytes_from_payload(&message);
+
+        // check result
+        let result = from_utf8(bytes.as_slice()).unwrap();
+        let expected_value = get_expected_json_string::<f64>(uuid, api_token, value, &topic);
+        assert_eq!(result.to_string(), expected_value);
     }
 }

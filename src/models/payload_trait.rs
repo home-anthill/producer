@@ -16,6 +16,11 @@ pub struct Light {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AirPressure {
+    pub value: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
     pub value: i32,
 }
@@ -23,11 +28,6 @@ pub struct Motion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AirQuality {
     pub value: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AirPressure {
-    pub value: f32,
 }
 
 pub trait PayloadTrait {}
@@ -38,8 +38,8 @@ impl PayloadTrait for Humidity {}
 
 impl PayloadTrait for Light {}
 
+impl PayloadTrait for AirPressure {}
+
 impl PayloadTrait for Motion {}
 
 impl PayloadTrait for AirQuality {}
-
-impl PayloadTrait for AirPressure {}

@@ -38,8 +38,7 @@ mod tests {
     use crate::config::init;
     use crate::models::get_msg_byte;
     use crate::models::topic::Topic;
-    use crate::mqtt::{get_bytes_from_payload, get_string_payload};
-    use log::debug;
+    use crate::mqtt::get_bytes_from_payload;
     use paho_mqtt::Message;
     use pretty_assertions::assert_eq;
     use serde::Serialize;

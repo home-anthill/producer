@@ -1,4 +1,4 @@
-use futures::{executor::block_on, stream::StreamExt};
+use futures::executor::block_on;
 use log::{debug, error, info, warn};
 use paho_mqtt::Message;
 use std::time::Duration;

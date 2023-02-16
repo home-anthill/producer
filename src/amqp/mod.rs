@@ -185,7 +185,6 @@ mod tests {
     use crate::amqp::AmqpClient;
     use crate::config::{init, Env};
     use crate::errors::amqp_error::AmqpError;
-    use log::info;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -193,7 +192,7 @@ mod tests {
         // init logger and env variables
         let env: Env = init();
         // create amqp_client without connecting it to the AMQP server
-        let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
+        let amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
 
         // cover all possible errors returned by `is_initialized` method
         let mut res = amqp_client.is_initialized(true, true, true);

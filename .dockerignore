@@ -3,8 +3,8 @@
 .vscode
 target
 logs
-producer-localhost-1883
 .dockerignore
 Dockerfile
 .env
 coverage
+producer-localhost-1883

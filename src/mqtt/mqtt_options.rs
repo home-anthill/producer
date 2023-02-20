@@ -21,9 +21,9 @@ pub struct MqttOptions {
 impl MqttOptions {
     pub fn new(mqtt_config: &MqttConfig) -> Self {
         let mqtt_uri = if mqtt_config.tls {
-            format!("ssl://{}:{}", mqtt_config.url, mqtt_config.port.to_string())
+            format!("ssl://{}:{}", mqtt_config.url, mqtt_config.port)
         } else {
-            format!("tcp://{}:{}", mqtt_config.url, mqtt_config.port.to_string())
+            format!("tcp://{}:{}", mqtt_config.url, mqtt_config.port)
         };
         info!(target: "app", "mqtt_uri = {}", &mqtt_uri);
 
@@ -87,9 +87,9 @@ impl MqttOptions {
         mqtt_user: &String,
         mqtt_password: &String,
         mqtt_tls: &bool,
-        mqtt_cert_file: &String,
-        mqtt_key_file: &String,
-        combined_ca_files_path: &String,
+        mqtt_cert_file: &str,
+        mqtt_key_file: &str,
+        combined_ca_files_path: &str,
     ) -> Result<ConnectOptions, anyhow::Error> {
         // Define the set of options for the connection
         let lwt = Message::new("test", "Subscriber lost connection", 1);

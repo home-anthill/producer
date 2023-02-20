@@ -48,7 +48,7 @@ jobs:
         uses: namoshek/rabbitmq-github-action@v1
         with:
           version: '3.8.9'
-          ports: '8080:15672 5672:5672'
+          ports: '15672:15672 15671:15671 5672:5672'
           # certificates: ${{ github.workspace }}/.ci/tls-certificates
           # config: ${{ github.workspace }}/.ci/rabbitmq.conf
           # definitions: ${{ github.workspace }}/.ci/definitions.json

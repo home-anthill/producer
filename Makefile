@@ -19,7 +19,7 @@ release: fmt lint
 
 run: fmt lint
 	# it requires `cargo-watch` via `make deps`
-	cargo watch -x 'run'
+	cargo watch -x 'run' --ignore 'src/tests_integration/*'
 .PHONY: run
 
 clean:

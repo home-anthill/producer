@@ -3,6 +3,6 @@
 .vscode
 target
 logs
-producer-localhost-1883
 .env
 coverage
+producer-localhost-1883

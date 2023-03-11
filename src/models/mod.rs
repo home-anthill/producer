@@ -29,9 +29,6 @@ fn message_payload_to_bytes<'a, T>(payload_str: &'a str, topic: &Topic) -> Vec<u
 where
     T: Deserialize<'a> + Serialize + Clone + PayloadTrait + Sized,
 {
-    // TODO find a way to validate payload and Topic, because payload.value must have a valid format based on Topic
-    // TODO I should block automatic casting of int and float...how?
-
     // deserialize to a Notification (with turbofish operator "::<Notification>")
     let parsed_result = serde_json::from_str::<Notification<T>>(payload_str);
     match parsed_result {
@@ -85,7 +82,7 @@ mod tests {
         const FLOAT_SENSORS: &[&str] = &["temperature", "humidity", "light", "airpressure"];
         const INT_SENSORS: &[&str] = &["motion", "airquality"];
         const VALUE_FLOAT: f64 = 12.0;
-        const VALUE_INT: i32 = 1;
+        const VALUE_INT: i64 = 1;
 
         for sensor_type in FLOAT_SENSORS.iter() {
             let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
@@ -101,7 +98,7 @@ mod tests {
 
         for sensor_type in INT_SENSORS.iter() {
             let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
-            let expected_value = get_expected_json_string::<i32>(uuid, VALUE_INT, &topic);
+            let expected_value = get_expected_json_string::<i64>(uuid, VALUE_INT, &topic);
 
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
             let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
@@ -113,7 +110,7 @@ mod tests {
 
         // unknown sensor type
         let topic: Topic = Topic::new(format!("sensors/{}/unknown", uuid).as_str());
-        let expected_value = get_expected_json_string::<i32>(uuid, VALUE_INT, &topic);
+        let expected_value = get_expected_json_string::<i64>(uuid, VALUE_INT, &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
         assert_eq!(msg_byte_arr.len(), 0);
     }
@@ -127,7 +124,7 @@ mod tests {
         // unknown sensor type
         let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", uuid).as_str());
         debug!(target: "app", "Topic = {}", &topic);
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, get_expected_json_string::<i32>(uuid, 1, &topic).as_str());
+        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, get_expected_json_string::<i64>(uuid, 1, &topic).as_str());
         // for unknown sensor type, get_msg_byte returns an empty Vec<u8>
         assert_eq!(msg_byte_arr.len(), 0);
     }

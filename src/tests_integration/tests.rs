@@ -37,7 +37,7 @@ async fn receive_message_via_mqtt() {
             let value = 12.23;
             let msg_payload_str = r#"{"uuid":""#.to_owned()
                 + uuid
-                + r#"", "apiToken":""#
+                + r#"","apiToken":""#
                 + api_token
                 + r#"","payload":{"value":"#
                 + value.to_string().as_str()
@@ -98,7 +98,7 @@ async fn send_mqtt_message_via_amqp() {
             let value = 12.23;
             let msg_payload_str = r#"{"uuid":""#.to_owned()
                 + uuid
-                + r#"", "apiToken":""#
+                + r#"","apiToken":""#
                 + api_token
                 + r#"","payload":{"value":"#
                 + value.to_string().as_str()

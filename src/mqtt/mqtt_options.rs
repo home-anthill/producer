@@ -74,8 +74,8 @@ impl MqttOptions {
         }
         let mut combined_root_ca = File::create(COMBINED_CA_FILES_PATH)?;
         debug!(target: "app", "merge_ca_files - {} file created", COMBINED_CA_FILES_PATH);
-        let root_ca_vec = read(&root_ca)?;
-        let mqtt_cert_file_vec = read(&mqtt_cert_file)?;
+        let root_ca_vec = read(root_ca)?;
+        let mqtt_cert_file_vec = read(mqtt_cert_file)?;
         combined_root_ca.write_all(&root_ca_vec)?;
         combined_root_ca.write_all(b"\n")?;
         combined_root_ca.write_all(&mqtt_cert_file_vec)?;

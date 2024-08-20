@@ -1036,7 +1036,7 @@ dependencies = [
 
 [[package]]
 name = "ks89-producer"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "anyhow",
  "dotenvy",

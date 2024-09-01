@@ -18,6 +18,7 @@ const TOPICS: &[&str] = &[
     "sensors/+/motion",
     "sensors/+/airquality",
     "sensors/+/airpressure",
+    "sensors/+/poweroutage",
 ];
 
 #[tokio::main]
@@ -63,7 +64,7 @@ async fn process_mqtt_message(
         let msg_byte: Vec<u8> = get_bytes_from_payload(msg);
         // return this if
         if msg_byte.is_empty() {
-            // msg is not valid, because not parsable as utf-8
+            // msg is not valid, because empty
             debug!(target: "app", "listen_for_messages - Empty msg_byte received");
             Err(anyhow::Error::from(MessageError::EmptyMessageError))
         } else {

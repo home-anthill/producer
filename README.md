@@ -19,6 +19,7 @@ GitHub releases [HERE](https://github.com/home-anthill/producer/releases)
 
 Versions:
 
+- 01/09/2024 - 1.1.0
 - 20/08/2024 - 1.0.2
 - 19/05/2024 - 1.0.1
 - 19/05/2024 - 1.0.0
@@ -30,7 +31,8 @@ Versions:
 
 ##### the authors of the main icon of this project:
 
-- <a href="https://www.freepik.com/free-vector/underground-ant-nest-with-red-ants_18582279.htm">Image by brgfx</a> from <a href="https://www.freepik.com/" title="Freepik">Freepik</a>
+- <a href="https://www.freepik.com/free-vector/underground-ant-nest-with-red-ants_18582279.htm">Image by brgfx</a>
+  from <a href="https://www.freepik.com/" title="Freepik">Freepik</a>
 
 # :copyright: License :copyright:
 

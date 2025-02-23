@@ -4,7 +4,7 @@ use paho_mqtt::Message;
 use std::time::Duration;
 
 use producer::amqp::AmqpClient;
-use producer::config::{init, Env};
+use producer::config::{Env, init};
 use producer::errors::message_error::MessageError;
 use producer::mqtt::get_bytes_from_payload;
 use producer::mqtt::mqtt_client::MqttClient;

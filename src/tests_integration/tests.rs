@@ -5,7 +5,7 @@ use paho_mqtt::Message;
 use pretty_assertions::assert_eq;
 
 use producer::amqp::AmqpClient;
-use producer::config::{init, Env};
+use producer::config::{Env, init};
 use producer::errors::message_error::MessageError;
 use producer::models::get_msg_byte;
 use producer::models::topic::Topic;
@@ -13,7 +13,7 @@ use producer::mqtt::mqtt_client::MqttClient;
 use producer::mqtt::mqtt_config::MqttConfig;
 use producer::mqtt::mqtt_options::MqttOptions;
 
-use crate::{process_mqtt_message, TOPICS};
+use crate::{TOPICS, process_mqtt_message};
 
 #[tokio::test]
 async fn receive_message_via_mqtt() {

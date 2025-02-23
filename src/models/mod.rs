@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::message::Message;
 use crate::models::notification::Notification;
-use crate::models::payload_trait::{AirPressure, AirQuality, Humidity, Light, Motion, PayloadTrait, PowerOutage, Temperature};
+use crate::models::payload_trait::{
+    AirPressure, AirQuality, Humidity, Light, Motion, PayloadTrait, PowerOutage, Temperature,
+};
 use crate::models::topic::Topic;
 
 pub mod message;
@@ -71,7 +73,7 @@ mod tests {
                 "value": value
             }
         })
-            .to_string()
+        .to_string()
     }
 
     #[test]

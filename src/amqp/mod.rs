@@ -4,9 +4,9 @@ use std::time::Duration;
 
 use lapin::publisher_confirm::PublisherConfirm;
 use lapin::{
+    BasicProperties, Channel, Connection, ConnectionProperties, Queue,
     options::{BasicPublishOptions, QueueDeclareOptions},
     types::FieldTable,
-    BasicProperties, Channel, Connection, ConnectionProperties, Queue,
 };
 
 use crate::errors::amqp_error::AmqpError;
@@ -187,7 +187,7 @@ impl AmqpClient {
 #[cfg(test)]
 mod tests {
     use crate::amqp::AmqpClient;
-    use crate::config::{init, Env};
+    use crate::config::{Env, init};
     use crate::errors::amqp_error::AmqpError;
     use pretty_assertions::assert_eq;
 

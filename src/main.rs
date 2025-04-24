@@ -71,14 +71,14 @@ async fn process_mqtt_message(
             // return the result of block_on(...)
             block_on(async {
                 if !amqp_client.is_connected() {
-                    debug!(target: "app", "listen_for_messages - AMQP channel is not connected, reconnecting...");
+                    error!(target: "app", "listen_for_messages - AMQP channel is not connected, reconnecting...");
                     amqp_client.connect_with_retry_loop().await;
                 }
                 debug!(target: "app", "listen_for_messages - Publishing message via AMQP...");
                 // send via AMQP
                 match amqp_client.publish_message(msg_byte).await {
                     Ok(_) => {
-                        info!(target: "app", "listen_for_messages - AMQP message published to queue {}", amqp_client.amqp_queue_name);
+                        debug!(target: "app", "listen_for_messages - AMQP message published to queue {}", amqp_client.amqp_queue_name);
                         Ok(())
                     }
                     Err(err) => {
@@ -90,7 +90,7 @@ async fn process_mqtt_message(
         }
     } else {
         // msg_opt="None" means we were disconnected. Try to reconnect...
-        warn!(target: "app", "listen_for_messages - Lost connection. Attempting reconnect in 5 seconds...");
+        error!(target: "app", "listen_for_messages - Lost connection. Attempting reconnect in 5 seconds...");
         while let Err(err) = mqtt_client.reconnect().await {
             error!(target: "app", "listen_for_messages - Error reconnecting: {:?}, retrying in 5 seconds...", err);
             tokio::time::sleep(Duration::from_millis(5000)).await;

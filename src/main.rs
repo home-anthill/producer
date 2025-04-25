@@ -1,5 +1,5 @@
 use futures::executor::block_on;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use paho_mqtt::Message;
 use std::time::Duration;
 

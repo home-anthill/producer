@@ -4,10 +4,10 @@ use std::path::Path;
 use std::string::String;
 use std::{env, time::Duration};
 
-use log::{debug, error, info, warn};
 use paho_mqtt::{
     ConnectOptions, ConnectOptionsBuilder, CreateOptions, CreateOptionsBuilder, Message, SslOptions, SslOptionsBuilder,
 };
+use tracing::{debug, error, info, warn};
 
 use crate::errors::mqtt_error::MqttError;
 use crate::mqtt::COMBINED_CA_FILES_PATH;

@@ -48,7 +48,6 @@ WORKDIR /app
 # to run the binary file you need:
 # - environment file
 # - rocket config file
-COPY --from=builder /app/log4rs.yaml log4rs.yaml
 COPY --from=builder /app/target/release/producer producer
 COPY --from=builder /app/.env_template /.env
 

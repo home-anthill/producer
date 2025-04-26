@@ -1,7 +1,8 @@
-use futures::executor::block_on;
-use log::{debug, error, info};
-use paho_mqtt::Message;
 use std::time::Duration;
+
+use futures::executor::block_on;
+use paho_mqtt::Message;
+use tracing::{debug, error, info};
 
 use producer::amqp::AmqpClient;
 use producer::config::{Env, init};

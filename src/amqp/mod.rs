@@ -1,4 +1,3 @@
-use log::{debug, error, info};
 use std::string::String;
 use std::time::Duration;
 
@@ -8,6 +7,7 @@ use lapin::{
     options::{BasicPublishOptions, QueueDeclareOptions},
     types::FieldTable,
 };
+use tracing::{debug, error, info};
 
 use crate::errors::amqp_error::AmqpError;
 

@@ -1,8 +1,8 @@
 use std::process::Command;
 
-use log::{debug, error};
 use paho_mqtt::Message;
 use pretty_assertions::assert_eq;
+use tracing::{debug, error};
 
 use producer::amqp::AmqpClient;
 use producer::config::{Env, init};

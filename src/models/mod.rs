@@ -1,5 +1,5 @@
-use log::{debug, error};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 
 use crate::models::message::Message;
 use crate::models::notification::Notification;
@@ -53,11 +53,11 @@ mod tests {
     use crate::config::init;
     use crate::models::get_msg_byte;
     use crate::models::topic::Topic;
-    use log::debug;
     use pretty_assertions::assert_eq;
     use serde::Serialize;
     use serde_json::json;
     use std::str::from_utf8;
+    use tracing::debug;
 
     fn get_expected_json_string<T: Serialize>(uuid: &str, value: T, topic: &Topic) -> String {
         let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";

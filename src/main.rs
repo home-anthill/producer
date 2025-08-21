@@ -96,6 +96,7 @@ async fn process_mqtt_message(
             error!(target: "app", "listen_for_messages - Error reconnecting: {:?}, retrying in 5 seconds...", err);
             tokio::time::sleep(Duration::from_millis(5000)).await;
         }
+        debug!(target: "app", "listen_for_messages - Connection re-established");
         Ok(())
     }
 }

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use lapin::publisher_confirm::PublisherConfirm;
 use lapin::{
-    BasicProperties, Channel, Connection, ConnectionProperties, Queue,
+    BasicProperties, Channel, Connection, ConnectionProperties, Queue, RecoveryConfig,
     options::{BasicPublishOptions, QueueDeclareOptions},
     types::FieldTable,
 };
@@ -82,8 +82,9 @@ impl AmqpClient {
         info!(target: "app", "create_connection - creating AMQP connection...");
         self.connection = loop {
             let options = ConnectionProperties::default()
+                .with_experimental_recovery_config(RecoveryConfig::full())
                 .with_executor(tokio_executor_trait::Tokio::current())
-                .with_reactor(tokio_reactor_trait::Tokio);
+                .with_reactor(tokio_reactor_trait::Tokio::current());
             match Connection::connect(&self.amqp_uri, options).await {
                 Ok(connection) => {
                     info!(target: "app", "create_connection - AMQP connection established");

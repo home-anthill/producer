@@ -16,6 +16,7 @@ use producer::mqtt::mqtt_options::MqttOptions;
 use crate::{TOPICS, process_mqtt_message};
 
 #[tokio::test]
+#[test_log::test]
 async fn receive_message_via_mqtt() {
     // init logger and env variables
     let env: Env = init();
@@ -73,6 +74,7 @@ async fn receive_message_via_mqtt() {
 }
 
 #[tokio::test]
+#[test_log::test]
 async fn send_mqtt_message_via_amqp() {
     // init logger and env variables
     let env: Env = init();
@@ -122,6 +124,7 @@ async fn send_mqtt_message_via_amqp() {
 }
 
 #[tokio::test]
+#[test_log::test]
 async fn wrong_sensor_type_for_process_mqtt_message() {
     // init logger and env variables
     let env: Env = init();
@@ -160,6 +163,7 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
 }
 
 #[tokio::test]
+#[test_log::test]
 async fn reconnect_to_mqtt_on_message() {
     // init logger and env variables
     let env: Env = init();

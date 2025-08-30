@@ -60,7 +60,7 @@ dependencies = [
  "amq-protocol-uri",
  "async-trait",
  "cfg-if",
- "executor-trait",
+ "executor-trait 2.1.2",
  "reactor-trait 2.8.0",
  "tcp-stream",
  "tracing",
@@ -193,7 +193,7 @@ checksum = "9af57045d58eeb1f7060e7025a1631cbc6399e0a1d10ad6735b3d0ea7f8346ce"
 dependencies = [
  "async-global-executor",
  "async-trait",
- "executor-trait",
+ "executor-trait 2.1.2",
 ]
 
 [[package]]
@@ -700,6 +700,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "executor-trait"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d6a1fc6700fa12782770cb344a29172ae940ea41d5fd5049fdf236dd6eaa92"
+dependencies = [
+ "async-trait",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1116,7 +1125,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.16",
  "tokio",
- "tokio-executor-trait",
+ "tokio-executor-trait 3.1.0",
  "tokio-reactor-trait",
  "tracing",
  "tracing-appender",
@@ -1133,7 +1142,7 @@ dependencies = [
  "async-global-executor-trait",
  "async-reactor-trait",
  "async-trait",
- "executor-trait",
+ "executor-trait 2.1.2",
  "flume",
  "futures-core",
  "futures-io",
@@ -1648,7 +1657,7 @@ checksum = "5b1c85237926dd82e8bc3634240ecf2236ea81e904b3d83cdb1df974af9af293"
 dependencies = [
  "async-io",
  "async-trait",
- "executor-trait",
+ "executor-trait 2.1.2",
  "flume",
  "futures-core",
  "futures-io",
@@ -2173,8 +2182,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6278565f9fd60c2d205dfbc827e8bb1236c2b1a57148708e95861eff7a6b3bad"
 dependencies = [
  "async-trait",
- "executor-trait",
+ "executor-trait 2.1.2",
  "tokio",
+]
+
+[[package]]
+name = "tokio-executor-trait"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a7fe39b60ffe238db070f2e66fab42c3c2967482e2fbf754afd7e65525cf0da"
+dependencies = [
+ "async-trait",
+ "executor-trait 2.1.2",
+ "executor-trait 3.1.0",
+ "tokio",
+ "tokio-executor-trait 2.4.0",
 ]
 
 [[package]]
@@ -2190,14 +2212,14 @@ dependencies = [
 
 [[package]]
 name = "tokio-reactor-trait"
-version = "3.9.0"
+version = "4.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "910df5b7ec6f1ac0b06ae5500382ffb4785b7fef218ddf065f18ca3fb67bc7fc"
+checksum = "e5410ef3f06b4ca0b3868bebeb24e19fef3a05e2ad086f2b8230f2bdf4052cdf"
 dependencies = [
  "async-trait",
  "futures-core",
  "futures-io",
- "reactor-trait 2.8.0",
+ "reactor-trait 3.1.1",
  "tokio",
  "tokio-stream",
  "tokio-util",

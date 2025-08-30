@@ -23,13 +23,13 @@ thiserror = "2.0.16"
 anyhow = "1.0.99"
 lapin = { version = "3.2.1", features = ["unstable"] }
 tokio = { version = "^1.47.1", features = ["full"] }
-tokio-executor-trait = "2.1.3"
-tokio-reactor-trait = "3.8.0"
+tokio-executor-trait = "3.1.0"
+tokio-reactor-trait = "4.1.1"
 paho-mqtt = "0.13.3"
 libc = "0.2.175"
 tracing = "^0.1.41"
 tracing-appender = "^0.2.3"
-tracing-subscriber = { version = "^0.3.19", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.20", features = ["env-filter"] }
 dotenvy = "^0.15.7"
 envy = "^0.4.2"
 futures = "^0.3.31"

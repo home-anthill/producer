@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Topic {
     pub family: String,
     pub device_id: String,
-    pub feature: String,
+    pub feature_name: String,
 }
 
 impl Topic {
@@ -16,7 +16,7 @@ impl Topic {
         Self {
             family: items.first().unwrap().to_string(),
             device_id: items.get(1).unwrap().to_string(),
-            feature: items.last().unwrap().to_string(),
+            feature_name: items.last().unwrap().to_string(),
         }
     }
 }
@@ -27,7 +27,24 @@ impl fmt::Display for Topic {
         fmt.write_str("/")?;
         fmt.write_str(self.device_id.as_str())?;
         fmt.write_str("/")?;
-        fmt.write_str(self.feature.as_str())?;
+        fmt.write_str(self.feature_name.as_str())?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::topic::Topic;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    #[test_log::test]
+    fn check_topic_display() {
+        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let sensor_type = "temperature";
+
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
+        let expected = topic.to_string();
+        assert_eq!(format!("sensors/{}/{}", uuid, sensor_type), expected);
     }
 }

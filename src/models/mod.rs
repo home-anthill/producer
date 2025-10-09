@@ -15,7 +15,7 @@ pub mod topic;
 
 pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
     debug!(target: "app", "payload_str: {}", payload_str);
-    let msg_byte: Vec<u8> = match topic.feature.as_str() {
+    let msg_byte: Vec<u8> = match topic.feature_name.as_str() {
         "temperature" => message_payload_to_bytes::<Temperature>(payload_str, topic),
         "humidity" => message_payload_to_bytes::<Humidity>(payload_str, topic),
         "light" => message_payload_to_bytes::<Light>(payload_str, topic),
@@ -37,8 +37,13 @@ where
     match parsed_result {
         Ok(val) => {
             debug!(target: "app", "message_payload_to_bytes - parsed from JSON string, returning as byte array");
-            let serialized =
-                Message::<T>::new_as_json(val.uuid.clone(), val.api_token.clone(), topic.clone(), val.payload);
+            let serialized = Message::<T>::new_as_json(
+                val.api_token.clone(),
+                val.device_uuid.clone(),
+                val.feature_uuid.clone(),
+                topic.clone(),
+                val.payload,
+            );
             serialized.into_bytes()
         }
         Err(err) => {
@@ -59,15 +64,21 @@ mod tests {
     use std::str::from_utf8;
     use tracing::debug;
 
-    fn get_expected_json_string<T: Serialize>(uuid: &str, value: T, topic: &Topic) -> String {
+    fn get_expected_json_string<T: Serialize>(
+        device_uuid: &str,
+        feature_uuid: &str,
+        value: T,
+        topic: &Topic,
+    ) -> String {
         let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
         json!({
-            "uuid": uuid,
             "apiToken": api_token,
+            "deviceUuid": device_uuid,
+            "featureUuid": feature_uuid,
             "topic": {
                 "family": topic.family,
                 "deviceId": topic.device_id,
-                "feature": topic.feature
+                "featureName": topic.feature_name,
             },
             "payload": {
                 "value": value
@@ -81,15 +92,16 @@ mod tests {
         // init logger and env
         let _ = init();
 
-        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         const FLOAT_SENSORS: &[&str] = &["temperature", "humidity", "light", "airpressure"];
         const INT_SENSORS: &[&str] = &["motion", "airquality"];
         const VALUE_FLOAT: f64 = 12.0;
         const VALUE_INT: i64 = 1;
 
         for sensor_type in FLOAT_SENSORS.iter() {
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
-            let expected_value = get_expected_json_string::<f64>(uuid, VALUE_FLOAT, &topic);
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+            let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, VALUE_FLOAT, &topic);
 
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
             let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
@@ -100,8 +112,8 @@ mod tests {
         }
 
         for sensor_type in INT_SENSORS.iter() {
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
-            let expected_value = get_expected_json_string::<i64>(uuid, VALUE_INT, &topic);
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+            let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
 
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
             let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
@@ -112,8 +124,8 @@ mod tests {
         }
 
         // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown", uuid).as_str());
-        let expected_value = get_expected_json_string::<i64>(uuid, VALUE_INT, &topic);
+        let topic: Topic = Topic::new(format!("sensors/{}/unknown", device_uuid).as_str());
+        let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
         assert_eq!(msg_byte_arr.len(), 0);
     }
@@ -123,11 +135,15 @@ mod tests {
         // init logger and env
         let _ = init();
 
-        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", uuid).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str());
         debug!(target: "app", "Topic = {}", &topic);
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, get_expected_json_string::<i64>(uuid, 1, &topic).as_str());
+        let msg_byte_arr: Vec<u8> = get_msg_byte(
+            &topic,
+            get_expected_json_string::<i64>(device_uuid, feature_uuid, 1, &topic).as_str(),
+        );
         // for unknown sensor type, get_msg_byte returns an empty Vec<u8>
         assert_eq!(msg_byte_arr.len(), 0);
     }
@@ -137,10 +153,10 @@ mod tests {
         // init logger and env
         let _ = init();
 
-        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-        let topic: Topic = Topic::new(format!("sensors/{}/temperature", uuid).as_str());
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str());
         // create a message with a bad JSON payload
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, "{\"uuid\": \"1234\", 12}");
+        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, "{\"deviceUuid\": \"1234\", 12}");
         // for bad JSON payloads, get_msg_byte returns an empty Vec<u8>
         assert_eq!(msg_byte_arr.len(), 0);
     }
@@ -150,11 +166,11 @@ mod tests {
         // init logger and env
         let _ = init();
 
-        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-
-        let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, "motion").as_str());
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, "motion").as_str());
         // create a message with an int value, instead of a float as required by 'temperature'
-        let expected_value = get_expected_json_string::<f64>(uuid, 5.0, &topic);
+        let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, 5.0, &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
         let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
 

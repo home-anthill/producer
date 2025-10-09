@@ -32,13 +32,16 @@ async fn receive_message_via_mqtt() {
                 panic!("unknown error, because MQTT cannot subscribe to TOPICS");
             }
             // create MQTT message payload
-            let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+            let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+            let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
             let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
             let sensor_type = "temperature";
             let value = 12.23;
-            let msg_payload_str = r#"{"uuid":""#.to_owned()
-                + uuid
-                + r#"","apiToken":""#
+            let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
+                + device_uuid
+                + r#"", "featureUuid":""#
+                + feature_uuid
+                + r#"", "apiToken":""#
                 + api_token
                 + r#"","payload":{"value":"#
                 + value.to_string().as_str()
@@ -53,7 +56,7 @@ async fn receive_message_via_mqtt() {
                 .arg("-m")
                 .arg(&msg_payload_str)
                 .arg("-t")
-                .arg(format!("sensors/{}/{}", uuid, sensor_type))
+                .arg(format!("sensors/{}/{}", device_uuid, sensor_type))
                 .spawn()
                 .expect("command failed to start");
 
@@ -94,20 +97,23 @@ async fn send_mqtt_message_via_amqp() {
                 panic!("unknown error, because MQTT cannot subscribe to TOPICS");
             }
             // create MQTT message payload
-            let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+            let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+            let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
             let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
             let sensor_type = "temperature";
             let value = 12.23;
-            let msg_payload_str = r#"{"uuid":""#.to_owned()
-                + uuid
-                + r#"","apiToken":""#
+            let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
+                + device_uuid
+                + r#"", "featureUuid":""#
+                + feature_uuid
+                + r#"", "apiToken":""#
                 + api_token
                 + r#"","payload":{"value":"#
                 + value.to_string().as_str()
                 + r#"}}"#;
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
-            let message = Message::new(format!("sensors/{}/{}", uuid, sensor_type), msg_byte_arr, 0);
+            let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
             // send MQTT message via AMQP
             let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client).await;
@@ -136,20 +142,23 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
     let mut mqtt_client = MqttClient::new(MqttOptions::new(&mqtt_config)).unwrap();
 
     // create a bad MQTT message payload with an unknown sensor type
-    let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+    let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+    let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
     let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
     let sensor_type = "unknown_type";
     let value = 12.23;
-    let msg_payload_str = r#"{"uuid":""#.to_owned()
-        + uuid
+    let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
+        + device_uuid
+        + r#"", "featureUuid":""#
+        + feature_uuid
         + r#"", "apiToken":""#
         + api_token
         + r#"","payload":{"value":"#
         + value.to_string().as_str()
         + r#"}}"#;
-    let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
+    let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
     let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
-    let message = Message::new(format!("sensors/{}/{}", uuid, sensor_type), msg_byte_arr, 0);
+    let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
     // invoke `process_mqtt_message` with the bad MQTT message
     let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client).await;

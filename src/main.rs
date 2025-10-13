@@ -19,7 +19,7 @@ const TOPICS: &[&str] = &[
     "sensors/+/motion",
     "sensors/+/airquality",
     "sensors/+/airpressure",
-    "sensors/+/poweroutage",
+    "sensors/+/online",
 ];
 
 #[tokio::main]

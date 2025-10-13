@@ -31,7 +31,7 @@ pub struct AirQuality {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PowerOutage {
+pub struct Online {
     pub value: i64,
 }
 
@@ -49,4 +49,4 @@ impl PayloadTrait for Motion {}
 
 impl PayloadTrait for AirQuality {}
 
-impl PayloadTrait for PowerOutage {}
+impl PayloadTrait for Online {}

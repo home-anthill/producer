@@ -4,7 +4,7 @@ use tracing::{debug, error};
 use crate::models::message::Message;
 use crate::models::notification::Notification;
 use crate::models::payload_trait::{
-    AirPressure, AirQuality, Humidity, Light, Motion, PayloadTrait, PowerOutage, Temperature,
+    AirPressure, AirQuality, Humidity, Light, Motion, Online, PayloadTrait, Temperature,
 };
 use crate::models::topic::Topic;
 
@@ -22,7 +22,7 @@ pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
         "motion" => message_payload_to_bytes::<Motion>(payload_str, topic),
         "airquality" => message_payload_to_bytes::<AirQuality>(payload_str, topic),
         "airpressure" => message_payload_to_bytes::<AirPressure>(payload_str, topic),
-        "poweroutage" => message_payload_to_bytes::<PowerOutage>(payload_str, topic),
+        "online" => message_payload_to_bytes::<Online>(payload_str, topic),
         _ => vec![],
     };
     msg_byte

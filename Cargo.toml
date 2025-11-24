@@ -22,7 +22,7 @@ panic = "abort"
 thiserror = "2.0.17"
 anyhow = "1.0.100"
 lapin = { version = "3.3.0", features = ["unstable"] }
-tokio = { version = "^1.47.1", features = ["full"] }
+tokio = { version = "^1.48.0", features = ["full"] }
 tokio-executor-trait = "3.1.0"
 tokio-reactor-trait = "4.1.1"
 paho-mqtt = "0.13.3"

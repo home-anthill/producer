@@ -1,6 +1,6 @@
 [package]
 name = "ks89-producer"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
 resolver = "3"
 
@@ -19,32 +19,32 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
-thiserror = "2.0.17"
-anyhow = "1.0.100"
-lapin = { version = "3.7.2", features = ["unstable"] }
-tokio = { version = "^1.48.0", features = ["full"] }
-tokio-executor-trait = "3.1.0"
-tokio-reactor-trait = "4.1.1"
+lapin = { version = "4.3.0" }
+tokio = { version = "^1.50.0", features = ["full"] }
 paho-mqtt = "0.13.3"
-libc = "0.2.178"
-tracing = "^0.1.43"
+futures = "^0.3.32"
+# error handling
+thiserror = "2.0.18"
+anyhow = "1.0.102"
+# logger
+tracing = "^0.1.44"
 tracing-appender = "^0.2.4"
 tracing-subscriber = { version = "^0.3.22", features = ["env-filter"] }
+# env vars
 dotenvy = "^0.15.7"
 envy = "^0.4.2"
-futures = "^0.3.31"
 
 # To use Serialize and Deserialize traits, you must include Serde.
 # The "derive" feature is only required when
 # using #[derive(Serialize, Deserialize)] to make Serde work with structs
 # and enums defined in your crate.
 serde = { version = "^1.0.228", features = ["derive"] }
-serde_json = "^1.0.145"
+serde_json = "^1.0.149"
 
 [dev-dependencies]
 # better looking rust assertions
 pretty_assertions = "^1.4.1"
 # include also serde_json with the feature 'preserve_order' to don't change the order of keys
 # 'preserve_order' is required to compare results in a predictible way in testing
-serde_json = { version = "^1.0.145", features = ["preserve_order"] }
+serde_json = { version = "^1.0.149", features = ["preserve_order"] }
 test-log = {version = "0.2.19", features = ["trace"]}

@@ -84,7 +84,7 @@ async fn send_mqtt_message_via_amqp() {
 
     // init AMQP client
     let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
-    amqp_client.connect_with_retry_loop().await;
+    amqp_client.connect(false).await;
 
     // init MQTT client
     let mqtt_config: MqttConfig = MqttConfig::new(&env);
@@ -116,7 +116,7 @@ async fn send_mqtt_message_via_amqp() {
             let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
             // send MQTT message via AMQP
-            let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client).await;
+            let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client, "").await;
 
             // check result: it should return () if `process_mqtt_message`
             // successfully sent the message via AMQP
@@ -161,7 +161,13 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
     let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
     // invoke `process_mqtt_message` with the bad MQTT message
-    let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client).await;
+    let result = process_mqtt_message(
+        &Some(message),
+        &mut mqtt_client,
+        &mut amqp_client,
+        env.amqp_queue_name.as_str(),
+    )
+    .await;
 
     // check result: it should return MessageError::EmptyMessageError,
     // because sensor_type is unknown
@@ -179,7 +185,7 @@ async fn reconnect_to_mqtt_on_message() {
 
     // init AMQP client
     let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
-    amqp_client.connect_with_retry_loop().await;
+    amqp_client.connect(false).await;
 
     // init MQTT client
     let mqtt_config: MqttConfig = MqttConfig::new(&env);
@@ -196,10 +202,11 @@ async fn reconnect_to_mqtt_on_message() {
 
             // send MQTT message via AMQP
             // this will automatically trigger a `reconnect()`
-            let result = process_mqtt_message(&None, &mut mqtt_client, &mut amqp_client).await;
+            let result =
+                process_mqtt_message(&None, &mut mqtt_client, &mut amqp_client, env.amqp_queue_name.as_str()).await;
 
             // check result: it should return () if `process_mqtt_message`
-            // successfully reconnected to MQTT server
+            // successfully reconnected to the MQTT server
             assert_eq!(result.unwrap(), ());
         }
         Err(err) => {

@@ -42,6 +42,9 @@ FROM debian:trixie-slim as runtime
 # folder, you must install the 'ca-certificates' package or use
 # an image with 'ca-certificates' pre-installed.
 
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+
 WORKDIR /app
 
 # to run the binary file you need:

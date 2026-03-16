@@ -1,52 +1,21 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Temperature {
-    pub value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Humidity {
-    pub value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Light {
-    pub value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AirPressure {
-    pub value: f64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Motion {
-    pub value: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AirQuality {
-    pub value: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Online {
-    pub value: i64,
-}
-
 pub trait PayloadTrait {}
 
-impl PayloadTrait for Temperature {}
+macro_rules! payload_type {
+    ($name:ident, $ty:ty) => {
+        #[derive(Debug, Serialize, Deserialize, Clone)]
+        pub struct $name {
+            pub value: $ty,
+        }
+        impl PayloadTrait for $name {}
+    };
+}
 
-impl PayloadTrait for Humidity {}
-
-impl PayloadTrait for Light {}
-
-impl PayloadTrait for AirPressure {}
-
-impl PayloadTrait for Motion {}
-
-impl PayloadTrait for AirQuality {}
-
-impl PayloadTrait for Online {}
+payload_type!(Temperature, f64);
+payload_type!(Humidity, f64);
+payload_type!(Light, f64);
+payload_type!(AirPressure, f64);
+payload_type!(Motion, i64);
+payload_type!(AirQuality, i64);
+payload_type!(Online, i64);

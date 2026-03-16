@@ -1,5 +1,3 @@
-use std::string::String;
-
 use lapin::options::BasicConsumeOptions;
 use lapin::types::ShortString;
 use lapin::{
@@ -81,7 +79,7 @@ impl AmqpClient {
             }
             Err(err) => {
                 error!(target: "app", "create_connection - cannot create AMQP connection. Err = {:?}", err);
-                None
+                return Err(AmqpError::ConnectionError(String::from("amqp_client connection error")));
             }
         };
         Ok(())
@@ -90,13 +88,7 @@ impl AmqpClient {
     // private method that must be called after create_connection()
     async fn create_channel(&mut self) -> Result<(), AmqpError> {
         info!(target: "app", "create_channel - creating AMQP channel...");
-        // check if you are calling this method on an initialized amqp_client instance (with ONLY connection)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, false, false, false);
-        // if initialization fails, return the error
-        // I'm using the '?' operator as https://rust-lang.github.io/rust-clippy/master/index.html#/question_mark
-        // instead of the verbose syntax
-        // if let Err(err) = init_result { return Err(err); }
-        init_result?;
+        self.is_initialized(true, false, false, false)?;
         self.channel = match self.connection.as_ref().unwrap().create_channel().await {
             Ok(channel) => {
                 info!(target: "app", "create_channel - AMQP channel created");
@@ -104,7 +96,7 @@ impl AmqpClient {
             }
             Err(err) => {
                 error!(target: "app", "create_channel - cannot create AMQP channel. Err = {:?}", err);
-                None
+                return Err(AmqpError::ConnectionError("amqp_client channel creation error".into()));
             }
         };
         Ok(())
@@ -113,14 +105,7 @@ impl AmqpClient {
     // private method that must be called after both create_connection() and create_channel()
     async fn declare_queue(&mut self) -> Result<(), AmqpError> {
         info!(target: "app", "declare_queue - creating AMQP queue...");
-        // check if you are calling this method on an initialized amqp_client instance
-        // (with both connection and channel, but not queue)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, true, false, false);
-        // if initialization fails, return the error
-        // I'm using the '?' operator as https://rust-lang.github.io/rust-clippy/master/index.html#/question_mark
-        // instead of the verbose syntax
-        // if let Err(err) = init_result { return Err(err); }
-        init_result?;
+        self.is_initialized(true, true, false, false)?;
         self.queue = match self
             .channel
             .as_ref()
@@ -132,13 +117,13 @@ impl AmqpClient {
             )
             .await
         {
-            Ok(channel) => {
+            Ok(queue) => {
                 info!(target: "app", "declare_queue - AMQP queue created");
-                Some(channel)
+                Some(queue)
             }
             Err(err) => {
                 error!(target: "app", "declare_queue - cannot create AMQP queue. Err = {:?}", err);
-                None
+                return Err(AmqpError::ConnectionError("amqp_client queue declaration error".into()));
             }
         };
         Ok(())
@@ -147,14 +132,7 @@ impl AmqpClient {
     // private method that must be called after both create_connection(), create_channel() and create_queue()
     async fn create_consumer(&mut self) -> Result<(), AmqpError> {
         info!(target: "app", "create_consumer - creating AMQP consumer...");
-        // check if you are calling this method on an initialized amqp_client instance
-        // (with both connection, channel and queue, but not consumer)
-        let init_result: Result<(), AmqpError> = self.is_initialized(true, true, true, false);
-        // if initialization fails, return the error
-        // I'm using the '?' operator as https://rust-lang.github.io/rust-clippy/master/index.html#/question_mark
-        // instead of the verbose syntax
-        // if let Err(err) = init_result { return Err(err); }
-        init_result?;
+        self.is_initialized(true, true, true, false)?;
         self.consumer = match self
             .channel
             .as_ref()
@@ -173,7 +151,7 @@ impl AmqpClient {
             }
             Err(err) => {
                 error!(target: "app", "create_consumer - cannot create AMQP consumer. Err = {:?}", err);
-                None
+                return Err(AmqpError::ConnectionError("amqp_client consumer creation error".into()));
             }
         };
         Ok(())
@@ -213,9 +191,12 @@ impl AmqpClient {
                             "amqp_client error, but connection recovered",
                         )))
                     }
-                    Err(_) => Err(AmqpError::ErrorCannotRecover(String::from(
-                        "amqp_client error, cannot auto recover",
-                    ))),
+                    Err(_) => {
+                        self.connecting = false;
+                        Err(AmqpError::ErrorCannotRecover(String::from(
+                            "amqp_client error, cannot auto recover",
+                        )))
+                    }
                 }
             }
         }
@@ -301,7 +282,7 @@ mod tests {
         assert_eq!(
             res.err().unwrap().to_string(),
             anyhow::Error::from(AmqpError::Uninitialized(String::from(
-                "amqp_client consumer not initialized. You must call AmqpClient::new()",
+                "amqp_client consumer not initialized",
             )))
             .to_string()
         );

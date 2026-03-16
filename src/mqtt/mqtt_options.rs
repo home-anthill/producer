@@ -1,7 +1,5 @@
-use std::fs::{File, read, remove_file};
+use std::fs::{File, read};
 use std::io::Write;
-use std::path::Path;
-use std::string::String;
 use std::{env, time::Duration};
 
 use paho_mqtt::{
@@ -45,10 +43,10 @@ impl MqttOptions {
 
         info!(target: "app", "Creating MQTT ConnectOptions...");
         let conn_opts_result = Self::build_connect_options(
-            &mqtt_config.auth,
+            mqtt_config.auth,
             &mqtt_config.user,
             &mqtt_config.password,
-            &mqtt_config.tls,
+            mqtt_config.tls,
             &mqtt_config.cert_file,
             &mqtt_config.key_file,
             &mqtt_config.ca_files_path,
@@ -65,14 +63,19 @@ impl MqttOptions {
         }
     }
 
-    fn merge_ca_files(root_ca: &String, mqtt_cert_file: &String) -> Result<(), anyhow::Error> {
-        // re-create a new file appending two certificates:
+    fn merge_ca_files(root_ca: &str, mqtt_cert_file: &str) -> Result<(), anyhow::Error> {
+        // Re-create a new file appending two certificates:
         // - ROOT_CA file (ISRG_Root_X1.pem in case of Let's Encrypt)
         // - MQTT_CERT_FILE file (cert.pem in case of Let's Encrypt)
-        if Path::new(COMBINED_CA_FILES_PATH).exists() {
-            remove_file(COMBINED_CA_FILES_PATH)?;
-        }
-        let mut combined_root_ca = File::create(COMBINED_CA_FILES_PATH)?;
+        // File::create truncates if the file already exists, no need to remove first.
+        // Use restrictive permissions (0600) to prevent other users from reading the certs.
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut combined_root_ca = File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(COMBINED_CA_FILES_PATH)?;
         debug!(target: "app", "merge_ca_files - {} file created", COMBINED_CA_FILES_PATH);
         let root_ca_vec = read(root_ca)?;
         let mqtt_cert_file_vec = read(mqtt_cert_file)?;
@@ -83,10 +86,10 @@ impl MqttOptions {
     }
 
     fn build_connect_options(
-        mqtt_auth: &bool,
-        mqtt_user: &String,
-        mqtt_password: &String,
-        mqtt_tls: &bool,
+        mqtt_auth: bool,
+        mqtt_user: &str,
+        mqtt_password: &str,
+        mqtt_tls: bool,
         mqtt_cert_file: &str,
         mqtt_key_file: &str,
         combined_ca_files_path: &str,
@@ -101,12 +104,12 @@ impl MqttOptions {
             .clean_session(false)
             .will_message(lwt);
 
-        if *mqtt_auth {
+        if mqtt_auth {
             warn!(target: "app", "build_connect_options - MQTT authentication is enabled, setting username and password");
             connect_options_builder.user_name(mqtt_user).password(mqtt_password);
         }
 
-        if *mqtt_tls {
+        if mqtt_tls {
             warn!(target: "app", "build_connect_options - MQTT TLS is enabled, creating ConnectOptions with certificates");
             match Self::build_ssl_options(mqtt_cert_file, mqtt_key_file, combined_ca_files_path) {
                 Ok(ssl_options) => {

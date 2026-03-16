@@ -111,12 +111,12 @@ async fn send_mqtt_message_via_amqp() {
                 + r#"","payload":{"value":"#
                 + value.to_string().as_str()
                 + r#"}}"#;
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
             let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
             // send MQTT message via AMQP
-            let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client, "").await;
+            let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client, "", TOPICS).await;
 
             // check result: it should return () if `process_mqtt_message`
             // successfully sent the message via AMQP
@@ -156,7 +156,7 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
         + r#"","payload":{"value":"#
         + value.to_string().as_str()
         + r#"}}"#;
-    let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+    let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
     let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
     let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
@@ -166,6 +166,7 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
         &mut mqtt_client,
         &mut amqp_client,
         env.amqp_queue_name.as_str(),
+        TOPICS,
     )
     .await;
 
@@ -202,8 +203,14 @@ async fn reconnect_to_mqtt_on_message() {
 
             // send MQTT message via AMQP
             // this will automatically trigger a `reconnect()`
-            let result =
-                process_mqtt_message(&None, &mut mqtt_client, &mut amqp_client, env.amqp_queue_name.as_str()).await;
+            let result = process_mqtt_message(
+                &None,
+                &mut mqtt_client,
+                &mut amqp_client,
+                env.amqp_queue_name.as_str(),
+                TOPICS,
+            )
+            .await;
 
             // check result: it should return () if `process_mqtt_message`
             // successfully reconnected to the MQTT server

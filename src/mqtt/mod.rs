@@ -1,5 +1,3 @@
-use std::string::String;
-
 use paho_mqtt::Message;
 use tracing::{debug, error};
 
@@ -14,10 +12,15 @@ const COMBINED_CA_FILES_PATH: &str = "./rootca_and_cert.pem";
 
 pub fn get_bytes_from_payload(msg: &Message) -> Vec<u8> {
     let payload: String = get_string_payload(msg);
-    let topic: Topic = Topic::new(msg.topic());
+    let topic = match Topic::new(msg.topic()) {
+        Ok(t) => t,
+        Err(err) => {
+            error!(target: "app", "get_bytes_from_payload - invalid MQTT topic: {}", err);
+            return vec![];
+        }
+    };
     debug!(target: "app", "get_bytes_from_payload - MQTT message topic = {}", &topic);
-    let msg_byte: Vec<u8> = get_msg_byte(&topic, &payload);
-    msg_byte
+    get_msg_byte(&topic, &payload)
 }
 
 fn get_string_payload(msg: &Message) -> String {
@@ -80,7 +83,7 @@ mod tests {
         let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
         let sensor_type = "temperature";
         let value = 12.23;
-        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
         let msg_payload = r#"{"deviceUuid":""#.to_owned()
             + device_uuid
             + r#"", "featureUuid":""#

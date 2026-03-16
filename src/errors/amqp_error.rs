@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum AmqpError {
     #[error("amqp_client not initialized error")]
     Uninitialized(String),
+    #[error("amqp_client connection error")]
+    ConnectionError(String),
     #[error("amqp_client error, but connection recovered")]
     ErrorButRecovered(String),
     #[error("amqp_client error, cannot auto recover")]

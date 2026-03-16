@@ -11,24 +11,22 @@ pub struct Topic {
 }
 
 impl Topic {
-    pub fn new(topic: &str) -> Self {
+    pub fn new(topic: &str) -> Result<Self, String> {
         let items: Vec<&str> = topic.split('/').collect();
-        Self {
-            family: items.first().unwrap().to_string(),
-            device_id: items.get(1).unwrap().to_string(),
-            feature_name: items.last().unwrap().to_string(),
+        if items.len() != 3 {
+            return Err(format!("expected 3 segments in topic '{}', got {}", topic, items.len()));
         }
+        Ok(Self {
+            family: items[0].to_string(),
+            device_id: items[1].to_string(),
+            feature_name: items[2].to_string(),
+        })
     }
 }
 
 impl fmt::Display for Topic {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(self.family.as_str())?;
-        fmt.write_str("/")?;
-        fmt.write_str(self.device_id.as_str())?;
-        fmt.write_str("/")?;
-        fmt.write_str(self.feature_name.as_str())?;
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}/{}", self.family, self.device_id, self.feature_name)
     }
 }
 
@@ -43,7 +41,7 @@ mod tests {
         let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let sensor_type = "temperature";
 
-        let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str()).unwrap();
         let expected = topic.to_string();
         assert_eq!(format!("sensors/{}/{}", uuid, sensor_type), expected);
     }

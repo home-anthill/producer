@@ -7,7 +7,7 @@ use crate::models::topic::Topic;
 #[serde(rename_all = "camelCase")]
 pub struct Message<T>
 where
-    T: PayloadTrait + Sized + Serialize,
+    T: PayloadTrait + Serialize,
 {
     pub api_token: String,
     pub device_uuid: String,
@@ -18,7 +18,7 @@ where
 
 impl<T> Message<T>
 where
-    T: PayloadTrait + Sized + Serialize,
+    T: PayloadTrait + Serialize,
 {
     pub fn new(api_token: String, device_uuid: String, feature_uuid: String, topic: Topic, payload: T) -> Message<T> {
         Self {

@@ -1,4 +1,3 @@
-use std::string::String;
 use std::time::Duration;
 
 use futures::stream::StreamExt;
@@ -29,7 +28,7 @@ impl MqttClient {
         info!(target: "app", "connect - Connecting to the MQTT server with ConnectOptions...");
         while let Err(err) = self.client.connect(self.conn_opts.clone()).await {
             error!(target: "app", "connect - MQTT Connection error, retying in 30 seconds. Error = {:?}", err);
-            tokio::time::sleep(Duration::from_millis(30000)).await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
         info!(target: "app", "connect - MQTT Connection succeeded");
     }

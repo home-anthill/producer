@@ -15,7 +15,7 @@ pub mod topic;
 
 pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
     debug!(target: "app", "payload_str: {}", payload_str);
-    let msg_byte: Vec<u8> = match topic.feature_name.as_str() {
+    match topic.feature_name.as_str() {
         "temperature" => message_payload_to_bytes::<Temperature>(payload_str, topic),
         "humidity" => message_payload_to_bytes::<Humidity>(payload_str, topic),
         "light" => message_payload_to_bytes::<Light>(payload_str, topic),
@@ -24,13 +24,12 @@ pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
         "airpressure" => message_payload_to_bytes::<AirPressure>(payload_str, topic),
         "online" => message_payload_to_bytes::<Online>(payload_str, topic),
         _ => vec![],
-    };
-    msg_byte
+    }
 }
 
 fn message_payload_to_bytes<'a, T>(payload_str: &'a str, topic: &Topic) -> Vec<u8>
 where
-    T: Deserialize<'a> + Serialize + Clone + PayloadTrait + Sized,
+    T: Deserialize<'a> + Serialize + Clone + PayloadTrait,
 {
     // deserialize to a Notification (with turbofish operator "::<Notification>")
     let parsed_result = serde_json::from_str::<Notification<T>>(payload_str);
@@ -38,9 +37,9 @@ where
         Ok(val) => {
             debug!(target: "app", "message_payload_to_bytes - parsed from JSON string, returning as byte array");
             let serialized = Message::<T>::new_as_json(
-                val.api_token.clone(),
-                val.device_uuid.clone(),
-                val.feature_uuid.clone(),
+                val.api_token,
+                val.device_uuid,
+                val.feature_uuid,
                 topic.clone(),
                 val.payload,
             );
@@ -100,7 +99,7 @@ mod tests {
         const VALUE_INT: i64 = 1;
 
         for sensor_type in FLOAT_SENSORS.iter() {
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
             let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, VALUE_FLOAT, &topic);
 
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
@@ -112,7 +111,7 @@ mod tests {
         }
 
         for sensor_type in INT_SENSORS.iter() {
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
             let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
 
             let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
@@ -124,7 +123,7 @@ mod tests {
         }
 
         // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown", device_uuid).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/unknown", device_uuid).as_str()).unwrap();
         let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
         assert_eq!(msg_byte_arr.len(), 0);
@@ -138,7 +137,7 @@ mod tests {
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str()).unwrap();
         debug!(target: "app", "Topic = {}", &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(
             &topic,
@@ -154,7 +153,7 @@ mod tests {
         let _ = init();
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
         // create a message with a bad JSON payload
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, "{\"deviceUuid\": \"1234\", 12}");
         // for bad JSON payloads, get_msg_byte returns an empty Vec<u8>
@@ -168,7 +167,7 @@ mod tests {
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, "motion").as_str());
+        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, "motion").as_str()).unwrap();
         // create a message with an int value, instead of a float as required by 'temperature'
         let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, 5.0, &topic);
         let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());

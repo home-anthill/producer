@@ -75,7 +75,7 @@ COPY --from=system-deps /etc/ssl/certs /etc/ssl/certs
 COPY --from=system-deps /staging/lib/ /usr/lib/
 
 # App directory skeleton (/app and /app/logs owned by nobody).
-COPY --from=system-deps /app /app
+COPY --from=system-deps --chown=65534:65534 /app /app
 
 WORKDIR /app
 

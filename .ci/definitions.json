@@ -4,6 +4,11 @@
       "name": "produceruser",
       "password": "producerpassword",
       "tags": "administrator"
+    },
+    {
+      "name": "guest",
+      "password": "guest",
+      "tags": "administrator"
     }
   ],
   "vhosts": [

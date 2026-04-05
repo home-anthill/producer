@@ -79,9 +79,8 @@ COPY --from=system-deps --chown=65534:65534 /app /app
 
 WORKDIR /app
 
-# Binary and env template.
+# Binary only — secrets are injected at runtime via Kubernetes Secrets / env vars.
 COPY --from=builder --chown=65534:65534 /app/target/release/producer /app/producer
-COPY --from=builder --chown=65534:65534 /app/.env_template /.env
 
 USER 65534
 

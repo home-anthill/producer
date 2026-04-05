@@ -1,14 +1,13 @@
 use thiserror::Error;
 
-// custom error, based on 'thiserror' library
 #[derive(Error, Debug)]
 pub enum AmqpError {
-    #[error("amqp_client not initialized error")]
+    #[error("amqp_client not initialized: {0}")]
     Uninitialized(String),
-    #[error("amqp_client connection error")]
+    #[error("amqp_client connection error: {0}")]
     ConnectionError(String),
-    #[error("amqp_client error, but connection recovered")]
+    #[error("amqp_client error, but connection recovered: {0}")]
     ErrorButRecovered(String),
-    #[error("amqp_client error, cannot auto recover")]
+    #[error("amqp_client error, cannot auto recover: {0}")]
     ErrorCannotRecover(String),
 }

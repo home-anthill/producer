@@ -39,7 +39,11 @@ jobs:
         with:
           toolchain: stable
           # target: x86_64-unknown-linux-musl
-          components: clippy, llvm-tools-preview
+          components: clippy, rustfmt, llvm-tools-preview
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Install tools
+        run: cargo install grcov cargo-audit
       - name: Install Make
         run: sudo apt-get install -y make
       - name: Install and start RabbitMQ
@@ -47,9 +51,7 @@ jobs:
         with:
           version: '4.2.2-management'
           ports: '15672:15672 15671:15671 5672:5672'
-          # certificates: ${{ github.workspace }}/.ci/tls-certificates
-          # config: ${{ github.workspace }}/.ci/rabbitmq.conf
-          # definitions: ${{ github.workspace }}/.ci/definitions.json
+          definitions: ${{ github.workspace }}/.ci/definitions.json
           container-name: 'rabbitmq'
       - name: Install and start Mosquitto
         run: |
@@ -64,16 +66,16 @@ jobs:
           # that force github actions job to fail. With `|| true` I can ignore that error.
           mosquitto_pub --version || true
           mosquitto_sub --version || true
+      - name: Run security audit
+        run: cargo audit
       - name: Run tests
         run: |
           cp .env_template .env
-          echo "Installing dependencies"
-          make deps-ci
-          echo "Running tests"
           make test-coverage
 
   build:
     name: Build and publish
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

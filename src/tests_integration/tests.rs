@@ -6,7 +6,6 @@ use tracing::{debug, error};
 
 use producer::amqp::AmqpClient;
 use producer::config::{Env, init};
-use producer::errors::message_error::MessageError;
 use producer::models::get_msg_byte;
 use producer::models::topic::Topic;
 use producer::mqtt::mqtt_client::MqttClient;
@@ -18,151 +17,133 @@ use crate::{TOPICS, process_mqtt_message};
 #[tokio::test]
 #[test_log::test]
 async fn receive_message_via_mqtt() {
-    // init logger and env variables
     let env: Env = init();
 
-    // init MQTT client
     let mqtt_config: MqttConfig = MqttConfig::new(&env);
-    match MqttClient::new(MqttOptions::new(&mqtt_config)) {
-        Ok(mut mqtt_client) => {
-            // connect to MQTT server and subscribe to topics
-            mqtt_client.connect().await;
-            if let Err(err) = mqtt_client.subscribe(TOPICS).await {
-                error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
-                panic!("unknown error, because MQTT cannot subscribe to TOPICS");
-            }
-            // create MQTT message payload
-            let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-            let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-            let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
-            let sensor_type = "temperature";
-            let value = 12.23;
-            let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
-                + device_uuid
-                + r#"", "featureUuid":""#
-                + feature_uuid
-                + r#"", "apiToken":""#
-                + api_token
-                + r#"","payload":{"value":"#
-                + value.to_string().as_str()
-                + r#"}}"#;
-
-            // send an MQTT message to the server via `mosquitto_pub` cli
-            Command::new("mosquitto_pub")
-                .arg("-u")
-                .arg("mosquser")
-                .arg("-P")
-                .arg("Password1!")
-                .arg("-m")
-                .arg(&msg_payload_str)
-                .arg("-t")
-                .arg(format!("sensors/{}/{}", device_uuid, sensor_type))
-                .spawn()
-                .expect("command failed to start");
-
-            // receive MQTT message
-            let msg_opt_opt = mqtt_client.get_next_message().await;
-            let msg_mqtt = &msg_opt_opt.unwrap().unwrap();
-            let message = std::str::from_utf8(msg_mqtt.payload()).unwrap();
-            debug!(target: "app", "message = {}", &message);
-
-            // check results: received message and sent message payloads must be equal
-            assert_eq!(&message, &msg_payload_str);
-        }
-        Err(err) => {
+    let mut mqtt_client = MqttClient::new(MqttOptions::new(&mqtt_config).expect("cannot create MqttOptions"))
+        .unwrap_or_else(|err| {
             error!(target: "app", "Error creating MQTT client: {:?}", err);
-            panic!("unknown error, cannot create MQTT client");
-        }
-    }
+            panic!("cannot create MQTT client: {err:?}")
+        });
+    mqtt_client.connect().await.expect("mqtt connect failed");
+    mqtt_client.subscribe(TOPICS).await.unwrap_or_else(|err| {
+        error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
+        panic!("cannot subscribe to MQTT topics: {err:?}")
+    });
+    let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+    let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+    let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
+    let sensor_type = "temperature";
+    let value = 12.23;
+    let msg_payload_str = format!(
+        r#"{{"deviceUuid":"{device_uuid}", "featureUuid":"{feature_uuid}", "apiToken":"{api_token}","payload":{{"value":{value}}}}}"#
+    );
+
+    Command::new("mosquitto_pub")
+        .arg("-u")
+        .arg("mosquser")
+        .arg("-P")
+        .arg("Password1!")
+        .arg("-m")
+        .arg(&msg_payload_str)
+        .arg("-t")
+        .arg(format!("sensors/{}/{}", device_uuid, sensor_type))
+        .spawn()
+        .expect("command failed to start");
+
+    let msg_opt_opt = mqtt_client.get_next_message().await;
+    let msg_mqtt = msg_opt_opt
+        .expect("message stream ended unexpectedly")
+        .expect("got disconnection signal instead of message");
+    let message = std::str::from_utf8(msg_mqtt.payload()).expect("message payload is not valid UTF-8");
+    debug!(target: "app", "message = {}", &message);
+
+    assert_eq!(message, msg_payload_str);
 }
 
 #[tokio::test]
 #[test_log::test]
 async fn send_mqtt_message_via_amqp() {
-    // init logger and env variables
     let env: Env = init();
 
-    // init AMQP client
-    let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
-    amqp_client.connect(false).await;
+    let mut amqp_client = AmqpClient::new(
+        env.amqp_uri.clone(),
+        env.amqp_queue_name.clone(),
+        env.amqp_hmac_secret.clone(),
+    );
+    amqp_client.connect(false).await.expect("amqp connect failed");
 
-    // init MQTT client
     let mqtt_config: MqttConfig = MqttConfig::new(&env);
-    match MqttClient::new(MqttOptions::new(&mqtt_config)) {
-        Ok(mut mqtt_client) => {
-            // connect to MQTT server and subscribe to topics
-            mqtt_client.connect().await;
-            if let Err(err) = mqtt_client.subscribe(TOPICS).await {
-                error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
-                panic!("unknown error, because MQTT cannot subscribe to TOPICS");
-            }
-            // create MQTT message payload
-            let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-            let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-            let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
-            let sensor_type = "temperature";
-            let value = 12.23;
-            let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
-                + device_uuid
-                + r#"", "featureUuid":""#
-                + feature_uuid
-                + r#"", "apiToken":""#
-                + api_token
-                + r#"","payload":{"value":"#
-                + value.to_string().as_str()
-                + r#"}}"#;
-            let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
-            let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
-            let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
-
-            // send MQTT message via AMQP
-            let result = process_mqtt_message(&Some(message), &mut mqtt_client, &mut amqp_client, "", TOPICS).await;
-
-            // check result: it should return () if `process_mqtt_message`
-            // successfully sent the message via AMQP
-            assert_eq!(result.unwrap(), ());
-        }
-        Err(err) => {
+    let mut mqtt_client = MqttClient::new(MqttOptions::new(&mqtt_config).expect("cannot create MqttOptions"))
+        .unwrap_or_else(|err| {
             error!(target: "app", "Error creating MQTT client: {:?}", err);
-            panic!("unknown error, cannot create MQTT client");
-        }
-    }
+            panic!("cannot create MQTT client: {err:?}")
+        });
+    mqtt_client.connect().await.expect("mqtt connect failed");
+    mqtt_client.subscribe(TOPICS).await.unwrap_or_else(|err| {
+        error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
+        panic!("cannot subscribe to MQTT topics: {err:?}")
+    });
+    let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+    let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+    let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
+    let sensor_type = "temperature";
+    let value = 12.23;
+    let msg_payload_str = format!(
+        r#"{{"deviceUuid":"{device_uuid}", "featureUuid":"{feature_uuid}", "apiToken":"{api_token}","payload":{{"value":{value}}}}}"#
+    );
+    let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
+    let msg_byte_arr = get_msg_byte(&topic, msg_payload_str.as_str()).expect("expected Some bytes");
+    let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
+
+    let result = process_mqtt_message(Some(&message), &mut mqtt_client, &mut amqp_client, "", TOPICS).await;
+    assert_eq!(result.unwrap(), ());
 }
 
 #[tokio::test]
 #[test_log::test]
 async fn wrong_sensor_type_for_process_mqtt_message() {
-    // init logger and env variables
+    let _env: Env = init();
+
+    let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+    let sensor_type = "unknown_type";
+
+    // H5: Topic::new now rejects unknown feature names at construction time,
+    // so no message ever reaches process_mqtt_message with an invalid sensor type.
+    let topic_result = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str());
+    assert!(
+        topic_result.is_err(),
+        "expected Topic::new to reject unknown feature name"
+    );
+}
+
+#[tokio::test]
+#[test_log::test]
+async fn reconnect_to_mqtt_on_message() {
     let env: Env = init();
 
-    // create an instance of AMQP client
-    let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
-    // create an instance of MQTT client
+    let mut amqp_client = AmqpClient::new(
+        env.amqp_uri.clone(),
+        env.amqp_queue_name.clone(),
+        env.amqp_hmac_secret.clone(),
+    );
+    amqp_client.connect(false).await.expect("amqp connect failed");
+
     let mqtt_config: MqttConfig = MqttConfig::new(&env);
-    let mut mqtt_client = MqttClient::new(MqttOptions::new(&mqtt_config)).unwrap();
+    let mut mqtt_client = MqttClient::new(MqttOptions::new(&mqtt_config).expect("cannot create MqttOptions"))
+        .unwrap_or_else(|err| {
+            error!(target: "app", "Error creating MQTT client: {:?}", err);
+            panic!("cannot create MQTT client: {err:?}")
+        });
+    mqtt_client.connect().await.expect("mqtt connect failed");
+    mqtt_client.subscribe(TOPICS).await.unwrap_or_else(|err| {
+        error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
+        panic!("cannot subscribe to MQTT topics: {err:?}")
+    });
+    let _ = mqtt_client.disconnect().await;
 
-    // create a bad MQTT message payload with an unknown sensor type
-    let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-    let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-    let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
-    let sensor_type = "unknown_type";
-    let value = 12.23;
-    let msg_payload_str = r#"{"deviceUuid":""#.to_owned()
-        + device_uuid
-        + r#"", "featureUuid":""#
-        + feature_uuid
-        + r#"", "apiToken":""#
-        + api_token
-        + r#"","payload":{"value":"#
-        + value.to_string().as_str()
-        + r#"}}"#;
-    let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
-    let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, msg_payload_str.as_str());
-    let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
-
-    // invoke `process_mqtt_message` with the bad MQTT message
     let result = process_mqtt_message(
-        &Some(message),
+        None,
         &mut mqtt_client,
         &mut amqp_client,
         env.amqp_queue_name.as_str(),
@@ -170,55 +151,5 @@ async fn wrong_sensor_type_for_process_mqtt_message() {
     )
     .await;
 
-    // check result: it should return MessageError::EmptyMessageError,
-    // because sensor_type is unknown
-    assert_eq!(
-        result.err().unwrap().to_string(),
-        anyhow::Error::from(MessageError::EmptyMessageError).to_string()
-    );
-}
-
-#[tokio::test]
-#[test_log::test]
-async fn reconnect_to_mqtt_on_message() {
-    // init logger and env variables
-    let env: Env = init();
-
-    // init AMQP client
-    let mut amqp_client = AmqpClient::new(env.amqp_uri.clone(), env.amqp_queue_name.clone());
-    amqp_client.connect(false).await;
-
-    // init MQTT client
-    let mqtt_config: MqttConfig = MqttConfig::new(&env);
-    match MqttClient::new(MqttOptions::new(&mqtt_config)) {
-        Ok(mut mqtt_client) => {
-            // connect to MQTT server and subscribe to topics
-            mqtt_client.connect().await;
-            if let Err(err) = mqtt_client.subscribe(TOPICS).await {
-                error!(target: "app", "MQTT cannot subscribe to TOPICS, err = {:?}", err);
-                panic!("unknown error, because MQTT cannot subscribe to TOPICS");
-            }
-            // disconnect from MQTT server
-            let _ = mqtt_client.disconnect().await;
-
-            // send MQTT message via AMQP
-            // this will automatically trigger a `reconnect()`
-            let result = process_mqtt_message(
-                &None,
-                &mut mqtt_client,
-                &mut amqp_client,
-                env.amqp_queue_name.as_str(),
-                TOPICS,
-            )
-            .await;
-
-            // check result: it should return () if `process_mqtt_message`
-            // successfully reconnected to the MQTT server
-            assert_eq!(result.unwrap(), ());
-        }
-        Err(err) => {
-            error!(target: "app", "Error creating MQTT client: {:?}", err);
-            panic!("unknown error, cannot create MQTT client");
-        }
-    }
+    assert_eq!(result.unwrap(), ());
 }

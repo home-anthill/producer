@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::models::payload_trait::PayloadTrait;
 use crate::models::topic::Topic;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Message<T>
 where
@@ -20,7 +20,7 @@ impl<T> Message<T>
 where
     T: PayloadTrait + Serialize,
 {
-    pub fn new(api_token: String, device_uuid: String, feature_uuid: String, topic: Topic, payload: T) -> Message<T> {
+    fn new(api_token: String, device_uuid: String, feature_uuid: String, topic: Topic, payload: T) -> Message<T> {
         Self {
             api_token,
             device_uuid,
@@ -29,14 +29,15 @@ where
             payload,
         }
     }
+
     pub fn new_as_json(
         api_token: String,
         device_uuid: String,
         feature_uuid: String,
         topic: Topic,
         payload: T,
-    ) -> String {
+    ) -> Result<String, serde_json::Error> {
         let message = Self::new(api_token, device_uuid, feature_uuid, topic, payload);
-        serde_json::to_string(&message).unwrap()
+        serde_json::to_string(&message)
     }
 }

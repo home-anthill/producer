@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use futures::stream::StreamExt;
 use paho_mqtt::{AsyncClient, AsyncReceiver, ConnectOptions, Message, ServerResponse};
 use tracing::{error, info};
@@ -9,13 +7,12 @@ use crate::mqtt::mqtt_options::MqttOptions;
 pub struct MqttClient {
     conn_opts: ConnectOptions,
     client: AsyncClient,
-    pub message_stream: AsyncReceiver<Option<Message>>,
+    message_stream: AsyncReceiver<Option<Message>>,
 }
 
 impl MqttClient {
     pub fn new(options: MqttOptions) -> Result<Self, anyhow::Error> {
         let mut client: AsyncClient = AsyncClient::new(options.create_opts)?;
-        // Get message stream before connecting
         let message_stream = client.get_stream(25);
         Ok(Self {
             conn_opts: options.conn_opts,
@@ -24,13 +21,11 @@ impl MqttClient {
         })
     }
 
-    pub async fn connect(&mut self) {
+    pub async fn connect(&mut self) -> Result<(), paho_mqtt::Error> {
         info!(target: "app", "connect - Connecting to the MQTT server with ConnectOptions...");
-        while let Err(err) = self.client.connect(self.conn_opts.clone()).await {
-            error!(target: "app", "connect - MQTT Connection error, retying in 30 seconds. Error = {:?}", err);
-            tokio::time::sleep(Duration::from_secs(30)).await;
-        }
+        self.client.connect(self.conn_opts.clone()).await?;
         info!(target: "app", "connect - MQTT Connection succeeded");
+        Ok(())
     }
 
     pub async fn reconnect(&self) -> paho_mqtt::Result<ServerResponse> {
@@ -38,13 +33,10 @@ impl MqttClient {
         self.client.reconnect().await
     }
 
-    pub async fn subscribe(&mut self, topics_list: &[&str]) -> Result<(), paho_mqtt::Error> {
-        info!(target: "app", "subscribe - Subscribing to the topics: {:?}", topics_list);
-
-        let topics: Vec<String> = topics_list.iter().map(|s| s.to_string()).collect();
-        info!(target: "app", "subscribe - Subscribing to MQTT topics: {:?}", topics);
-        let qos = vec![0; topics.len()];
-        // We subscribe to the topic(s) we want here.
+    pub async fn subscribe<S: AsRef<str>>(&mut self, topics_list: &[S]) -> Result<(), paho_mqtt::Error> {
+        let topics: Vec<String> = topics_list.iter().map(|s| s.as_ref().to_owned()).collect();
+        info!(target: "app", "subscribe - Subscribing to the topics: {:?}", topics);
+        let qos = vec![1; topics.len()];
         match self.client.subscribe_many(&topics, &qos).await {
             Ok(_) => {
                 info!(target: "app", "subscribe - Subscription to the topics completed");

@@ -1,18 +1,18 @@
 use crate::config::Env;
-use crate::mqtt::COMBINED_CA_FILES_PATH;
+use zeroize::Zeroizing;
 
 pub struct MqttConfig {
     pub url: String,
     pub port: u16,
     pub client_id: String,
     pub auth: bool,
-    pub user: String,
-    pub password: String,
+    pub user: Zeroizing<String>,
+    pub password: Zeroizing<String>,
     pub tls: bool,
     pub root_ca_file: String,
     pub cert_file: String,
     pub key_file: String,
-    pub ca_files_path: String,
+    pub hmac_secret: Zeroizing<String>,
 }
 
 impl MqttConfig {
@@ -28,7 +28,7 @@ impl MqttConfig {
             root_ca_file: env.root_ca.clone(),
             cert_file: env.mqtt_cert_file.clone(),
             key_file: env.mqtt_key_file.clone(),
-            ca_files_path: COMBINED_CA_FILES_PATH.to_string(),
+            hmac_secret: env.amqp_hmac_secret.clone(),
         }
     }
 }

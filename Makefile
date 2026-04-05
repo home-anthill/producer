@@ -9,6 +9,11 @@ lint:
 	cargo clippy
 .PHONY: lint
 
+check:
+	# find vulnerabilities
+	cargo audit
+.PHONY:check
+
 build: fmt lint
 	cargo build
 .PHONY: build
@@ -62,13 +67,9 @@ deps: deps-test
 	rustup component add clippy
 	rustup component add rustfmt
 	cargo update
+	cargo install cargo-audit
 	cargo install cargo-watch
 .PHONY: deps
-
-deps-ci: deps-test
-	rustup component add clippy
-	rustup component add rustfmt
-.PHONY: deps-ci
 
 deps-test:
 	# install mozilla/grcov and llvm-tools-preview to show test code coverage

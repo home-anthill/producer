@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "name": "produceruser",
+      "password": "producerpassword",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "produceruser",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ]
+}

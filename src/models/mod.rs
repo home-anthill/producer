@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tracing::{debug, error};
 
 use crate::models::message::Message;
@@ -13,8 +14,11 @@ pub mod notification;
 pub mod payload_trait;
 pub mod topic;
 
-pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
-    debug!(target: "app", "payload_str: {}", payload_str);
+pub(crate) fn is_valid_uuid(s: &str) -> bool {
+    uuid::Uuid::parse_str(s).is_ok_and(|u| !u.is_nil())
+}
+
+pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Option<Vec<u8>> {
     match topic.feature_name.as_str() {
         "temperature" => message_payload_to_bytes::<Temperature>(payload_str, topic),
         "humidity" => message_payload_to_bytes::<Humidity>(payload_str, topic),
@@ -23,31 +27,39 @@ pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
         "airquality" => message_payload_to_bytes::<AirQuality>(payload_str, topic),
         "airpressure" => message_payload_to_bytes::<AirPressure>(payload_str, topic),
         "online" => message_payload_to_bytes::<Online>(payload_str, topic),
-        _ => vec![],
+        _ => None,
     }
 }
 
-fn message_payload_to_bytes<'a, T>(payload_str: &'a str, topic: &Topic) -> Vec<u8>
+fn message_payload_to_bytes<T>(payload_str: &str, topic: &Topic) -> Option<Vec<u8>>
 where
-    T: Deserialize<'a> + Serialize + Clone + PayloadTrait,
+    T: DeserializeOwned + Serialize + Clone + PayloadTrait,
 {
-    // deserialize to a Notification (with turbofish operator "::<Notification>")
     let parsed_result = serde_json::from_str::<Notification<T>>(payload_str);
     match parsed_result {
         Ok(val) => {
+            if !is_valid_uuid(&val.api_token) || !is_valid_uuid(&val.device_uuid) || !is_valid_uuid(&val.feature_uuid) {
+                error!(target: "app", "message_payload_to_bytes - invalid UUID in payload fields, dropping message");
+                return None;
+            }
             debug!(target: "app", "message_payload_to_bytes - parsed from JSON string, returning as byte array");
-            let serialized = Message::<T>::new_as_json(
+            match Message::<T>::new_as_json(
                 val.api_token,
                 val.device_uuid,
                 val.feature_uuid,
                 topic.clone(),
                 val.payload,
-            );
-            serialized.into_bytes()
+            ) {
+                Ok(serialized) => Some(serialized.into_bytes()),
+                Err(err) => {
+                    error!(target: "app", "message_payload_to_bytes - cannot serialize message to JSON. Err = {:?}", &err);
+                    None
+                }
+            }
         }
         Err(err) => {
-            error!(target: "app", "message_payload_to_bytes - cannot parse JSON from string, returning empty data. Err = {:?}", &err);
-            vec![]
+            error!(target: "app", "message_payload_to_bytes - cannot parse JSON from string. Err = {:?}", &err);
+            None
         }
     }
 }
@@ -88,7 +100,6 @@ mod tests {
 
     #[test]
     fn ok_get_msg_byte_sensors() {
-        // init logger and env
         let _ = init();
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
@@ -98,83 +109,62 @@ mod tests {
         const VALUE_FLOAT: f64 = 12.0;
         const VALUE_INT: i64 = 1;
 
-        for sensor_type in FLOAT_SENSORS.iter() {
+        for sensor_type in FLOAT_SENSORS {
             let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
             let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, VALUE_FLOAT, &topic);
 
-            let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
-            let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
+            let bytes = get_msg_byte(&topic, expected_value.as_str()).expect("expected Some bytes");
+            let result = from_utf8(&bytes).unwrap();
 
             debug!(target: "app", "result = {}", result);
             debug!(target: "app", "expected_value = {}", expected_value);
             assert_eq!(result.to_string(), expected_value);
         }
 
-        for sensor_type in INT_SENSORS.iter() {
+        for sensor_type in INT_SENSORS {
             let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
             let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
 
-            let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
-            let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
+            let bytes = get_msg_byte(&topic, expected_value.as_str()).expect("expected Some bytes");
+            let result = from_utf8(&bytes).unwrap();
 
             debug!(target: "app", "result = {}", result);
             debug!(target: "app", "expected_value = {}", expected_value);
             assert_eq!(result.to_string(), expected_value);
         }
-
-        // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown", device_uuid).as_str()).unwrap();
-        let expected_value = get_expected_json_string::<i64>(device_uuid, feature_uuid, VALUE_INT, &topic);
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
-        assert_eq!(msg_byte_arr.len(), 0);
     }
 
     #[test]
     fn wrong_get_msg_byte_unknown_sensor() {
-        // init logger and env
         let _ = init();
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
-        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-        // unknown sensor type
-        let topic: Topic = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str()).unwrap();
-        debug!(target: "app", "Topic = {}", &topic);
-        let msg_byte_arr: Vec<u8> = get_msg_byte(
-            &topic,
-            get_expected_json_string::<i64>(device_uuid, feature_uuid, 1, &topic).as_str(),
+        // H5: Topic::new now rejects unknown feature names at construction time.
+        let topic_result = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str());
+        assert!(
+            topic_result.is_err(),
+            "expected Topic::new to reject unknown feature name"
         );
-        // for unknown sensor type, get_msg_byte returns an empty Vec<u8>
-        assert_eq!(msg_byte_arr.len(), 0);
     }
 
     #[test]
     fn wrong_get_msg_byte_bad_json_message() {
-        // init logger and env
         let _ = init();
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
-        // create a message with a bad JSON payload
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, "{\"deviceUuid\": \"1234\", 12}");
-        // for bad JSON payloads, get_msg_byte returns an empty Vec<u8>
-        assert_eq!(msg_byte_arr.len(), 0);
+        assert!(get_msg_byte(&topic, "{\"deviceUuid\": \"1234\", 12}").is_none());
     }
 
     #[test]
     fn wrong_get_msg_byte_bad_value_format() {
-        // init logger and env
         let _ = init();
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-        let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, "motion").as_str()).unwrap();
-        // create a message with an int value, instead of a float as required by 'temperature'
+        let topic: Topic = Topic::new(format!("sensors/{}/motion", device_uuid).as_str()).unwrap();
+        // float value for a motion (integer) sensor → parse fails → None
         let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, 5.0, &topic);
-        let msg_byte_arr: Vec<u8> = get_msg_byte(&topic, expected_value.as_str());
-        let result = from_utf8(msg_byte_arr.as_slice()).unwrap();
-
-        debug!(target: "app", "result = {}", result);
-        // for bad JSON payloads, get_msg_byte returns an empty Vec<u8>
-        assert_eq!(msg_byte_arr.len(), 0);
+        assert!(get_msg_byte(&topic, expected_value.as_str()).is_none());
     }
 }

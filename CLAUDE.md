@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**producer** is part of the [home-anthill](https://github.com/home-anthill/docs) IoT platform. It is a Rust service that bridges MQTT and AMQP (RabbitMQ): it subscribes to MQTT sensor topics, deserializes incoming payloads into typed models, and republishes them as byte messages onto a RabbitMQ queue.
+**producer** is part of the [home-anthill](https://github.com/home-anthill/docs) IoT platform. It is a Rust service that bridges MQTT and AMQP (RabbitMQ): it subscribes to MQTT sensor topics, deserializes incoming payloads into typed models, and republishes them as byte messages onto a RabbitMQ queue. The Cargo package is `ks89-producer`; the binary and library crate are both named `producer`.
 
 ## Setup
 
-Copy `.env_template` to `.env` and update credentials:
+Copy `.env_template` to `.env` and update credentials/secrets:
 ```bash
 cp .env_template .env
-# Edit .env with your MQTT and RabbitMQ credentials
+# Edit .env with your MQTT credentials, RabbitMQ URI, and AMQP_HMAC_SECRET
 ```
 
 Install dev dependencies once:
@@ -80,7 +80,9 @@ This project is both a **binary** (`producer` — the bridge service) and a **li
 
 ### Environment Variables
 
-All config is in the `Env` struct (`config/mod.rs`): `AMQP_URI`, `AMQP_QUEUE_NAME`, `MQTT_URL`, `MQTT_PORT`, `MQTT_CLIENT_ID`, `MQTT_AUTH`, `MQTT_USER`, `MQTT_PASSWORD`, `MQTT_TLS`, `ROOT_CA`, `MQTT_CERT_FILE`, `MQTT_KEY_FILE`.
+All runtime config is in the `Env` struct (`config/mod.rs`): `AMQP_URI`, `AMQP_HMAC_SECRET`, `AMQP_QUEUE_NAME`, `MQTT_URL`, `MQTT_PORT`, `MQTT_CLIENT_ID`, `MQTT_AUTH`, `MQTT_USER`, `MQTT_PASSWORD`, `MQTT_TLS`, `ROOT_CA`, `MQTT_CERT_FILE`, `MQTT_KEY_FILE`.
+
+`.env_template` also contains `LOG_LEVEL`, but the current code does not read it directly; logging is configured in `config::init()`.
 
 ## Rust Edition & Formatting
 
@@ -99,12 +101,12 @@ See `CHANGELOG_CLAUDE.md` for a comprehensive log of security fixes and recent i
 
 The following remain unresolved:
 
-1. **Hardcoded MQTT credentials in integration tests** — `tests_integration/tests.rs:44–46` passes `-u mosquser -P Password1!` directly to `mosquitto_pub`. Should load from `.env` instead.
+1. **Hardcoded MQTT credentials in integration tests** — `src/tests_integration/tests.rs` passes `-u mosquser -P Password1!` directly to `mosquitto_pub`. This can drift from `.env_template`/`.env` and should load from `Env` instead.
 
-2. **`.env_template` contains test credentials** — `MQTT_USER` and `MQTT_PASSWORD` are set to test values; should use clearly marked placeholders (`<your-mqtt-user>`, etc.) so developers know they must be replaced.
+2. **`.env_template` contains example credentials** — `MQTT_USER` and `MQTT_PASSWORD` are set to concrete example values; should use clearly marked placeholders (`<your-mqtt-user>`, etc.) so developers know they must be replaced.
 
 3. **AMQP connection does not use TLS** — no `amqps://` support; messages (including `api_token`) travel unencrypted over RabbitMQ. Requires infrastructure support for AMQP TLS in the deployment.
 
-4. **Combined CA file written to CWD and never deleted** — `mqtt_options.rs` writes `rootca_and_cert.pem` at startup and never removes it after connection. Path-traversal is already blocked; cleanup remains open.
+4. **Combined CA file written to CWD and never deleted** — `mqtt_options.rs` writes `rootca_and_cert.pem` at startup and never removes it after connection.
 
-5. **Partial path-traversal protection in `merge_ca_files`** — `mqtt_options.rs:49–72` validates `key_store` and `private_key` paths but not `root_ca` and `mqtt_cert_file` paths.
+5. **Partial path-traversal protection for TLS paths** — `mqtt_options.rs` validates `key_store` and `private_key` paths in `build_ssl_options()`, but `merge_ca_files()` still reads `root_ca` and `mqtt_cert_file` directly.

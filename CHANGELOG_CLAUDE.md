@@ -1,5 +1,11 @@
 # Changelog (Claude)
 
+## 2026-05-01 Documentation Refresh
+
+- **Claude guidance aligned with current config** — `CLAUDE.md` now includes `AMQP_HMAC_SECRET` in the documented runtime environment and notes that `.env_template` has `LOG_LEVEL`, although the current `Env` struct does not consume it.
+- **Project naming clarified** — Documented the distinction between the Cargo package name (`ks89-producer`) and the binary/library crate name (`producer`).
+- **Open issues refreshed** — Updated stale paths and credential values in the integration-test credential issue, clarified that `.env_template` still contains concrete example credentials, and corrected the TLS CA-file/path-traversal notes to match `mqtt_options.rs`.
+
 ## Security
 
 - **Credential redaction** — AMQP URIs are scrubbed of embedded credentials before logging (`redact_uri()`). MQTT username and password are printed as `[REDACTED]` in logs and debug output. A hand-written `fmt::Debug` for `Env` redacts all four secret fields (`amqp_uri`, `amqp_hmac_secret`, `mqtt_user`, `mqtt_password`).

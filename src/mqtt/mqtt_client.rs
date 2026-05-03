@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use futures::stream::StreamExt;
 use paho_mqtt::{AsyncClient, AsyncReceiver, ConnectOptions, Message, ServerResponse};
 use tracing::{error, info};
@@ -7,13 +9,13 @@ use crate::mqtt::mqtt_options::MqttOptions;
 pub struct MqttClient {
     conn_opts: ConnectOptions,
     client: AsyncClient,
-    message_stream: AsyncReceiver<Option<Message>>,
+    message_stream: Pin<Box<AsyncReceiver<Option<Message>>>>,
 }
 
 impl MqttClient {
     pub fn new(options: MqttOptions) -> Result<Self, anyhow::Error> {
         let mut client: AsyncClient = AsyncClient::new(options.create_opts)?;
-        let message_stream = client.get_stream(25);
+        let message_stream = Box::pin(client.get_stream(25));
         Ok(Self {
             conn_opts: options.conn_opts,
             client,

@@ -9,9 +9,11 @@ pub struct Message<T>
 where
     T: PayloadTrait + Serialize,
 {
-    pub api_token: String,
     pub device_uuid: String,
     pub feature_uuid: String,
+    pub timestamp: i64,
+    pub nonce: String,
+    pub signature: String,
     pub topic: Topic,
     pub payload: T,
 }
@@ -20,24 +22,36 @@ impl<T> Message<T>
 where
     T: PayloadTrait + Serialize,
 {
-    fn new(api_token: String, device_uuid: String, feature_uuid: String, topic: Topic, payload: T) -> Message<T> {
+    fn new(
+        device_uuid: String,
+        feature_uuid: String,
+        timestamp: i64,
+        nonce: String,
+        signature: String,
+        topic: Topic,
+        payload: T,
+    ) -> Message<T> {
         Self {
-            api_token,
             device_uuid,
             feature_uuid,
+            timestamp,
+            nonce,
+            signature,
             topic,
             payload,
         }
     }
 
     pub fn new_as_json(
-        api_token: String,
         device_uuid: String,
         feature_uuid: String,
+        timestamp: i64,
+        nonce: String,
+        signature: String,
         topic: Topic,
         payload: T,
     ) -> Result<String, serde_json::Error> {
-        let message = Self::new(api_token, device_uuid, feature_uuid, topic, payload);
+        let message = Self::new(device_uuid, feature_uuid, timestamp, nonce, signature, topic, payload);
         serde_json::to_string(&message)
     }
 }

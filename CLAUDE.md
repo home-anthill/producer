@@ -43,7 +43,7 @@ Integration tests require **real** running infrastructure (no mocks):
 - **RabbitMQ** — AMQP broker
 - **CLI tools** — `mosquitto_pub` must be in `$PATH` for the `receive_message_via_mqtt` test
 
-The `ENV=testing` environment variable disables file-based logging in tests so output stays on console. Tests load `.env` via `dotenvy` and run single-threaded to avoid concurrent access issues.
+The `ENV=testing` environment variable disables file-based logging in tests so output stays on console. Tests load `.env` via `dotenvy` and run single-threaded to avoid concurrent access issues. The MQTT subscriber uses a unique test client id per run, and the `mosquitto_pub` helper reads `MQTT_PUBLISH_USER` / `MQTT_PUBLISH_PASSWORD` with local defaults (`device_pubsub` / `DevicePassword1!`).
 
 ## Architecture
 
@@ -73,8 +73,8 @@ This project is both a **binary** (`producer` — the bridge service) and a **li
 - **`lib.rs`** — Library root; re-exports `amqp`, `config`, `errors`, `models`, and `mqtt` for use in tests.
 - **`config/`** — Loads env vars into the `Env` struct using `dotenvy` + `envy`. Sets up `tracing` with rolling file appenders (info + error logs to `./logs/`).
 - **`mqtt/`** — MQTT client wrapper around `paho-mqtt`. `MqttConfig` builds connection parameters from `Env`, `MqttOptions` creates paho connection/create options (supports TLS with CA + client certs), `MqttClient` manages connect/subscribe/reconnect.
-- **`amqp/`** — RabbitMQ client wrapper around `lapin`. Manages connection → channel → queue lifecycle with builder pattern. Supports auto-recovery on publish failure.
-- **`models/`** — Typed sensor data models. `Topic` parses MQTT topic strings (`sensors/{deviceId}/{featureName}`). `Notification<T>` is the inbound MQTT payload. `Message<T>` is the outbound AMQP payload. `PayloadTrait` defines sensor types: Temperature, Humidity, Light, Motion, AirQuality, AirPressure, Online. Float sensors: temperature, humidity, light, airpressure. Integer sensors: motion, airquality. Boolean sensors: online.
+- **`amqp/`** — RabbitMQ client wrapper around `lapin`. Manages connection → channel → queue lifecycle with builder pattern. The named shared queue is declared durable because RabbitMQ 4.x denies transient non-exclusive queues by default. Publishes use the AMQP default exchange (`exchange=""`) with `AMQP_QUEUE_NAME` as the routing key, so the producer RabbitMQ user needs write permission on `amq.default` as well as permissions for the queue name. Channels enable publisher confirms; each publish waits for broker `Ack`, treats `Nack`/returned messages as errors, and retries once after rebuilding the AMQP connection.
+- **`models/`** — Typed sensor data models. `Topic` parses MQTT topic strings (`sensors/{deviceId}/{featureName}`). `Notification<T>` is the inbound MQTT payload and must contain `deviceUuid`, `featureUuid`, `timestamp`, `nonce`, `signature`, and `payload`; legacy `apiToken` is no longer forwarded. `Message<T>` is the outbound AMQP payload. `PayloadTrait` defines sensor types: Temperature, Humidity, Light, Motion, AirQuality, AirPressure, Online. Float sensors: temperature, humidity, light, airpressure. Integer sensors: motion, airquality. Boolean sensors: online.
 - **`errors/`** — Custom error types (`AmqpError`, `MqttError`, `MessageError`) using `thiserror`.
 - **`tests_integration/`** — Integration tests (declared in `main.rs` via `#[cfg(test)]`). Requires real MQTT and RabbitMQ brokers.
 
@@ -101,12 +101,8 @@ See `CHANGELOG_CLAUDE.md` for a comprehensive log of security fixes and recent i
 
 The following remain unresolved:
 
-1. **Hardcoded MQTT credentials in integration tests** — `src/tests_integration/tests.rs` passes `-u mosquser -P Password1!` directly to `mosquitto_pub`. This can drift from `.env_template`/`.env` and should load from `Env` instead.
+1. **AMQP connection does not use TLS** — no `amqps://` support; bridged sensor messages travel unencrypted over RabbitMQ unless protected by the surrounding network. Requires infrastructure support for AMQP TLS in the deployment.
 
-2. **`.env_template` contains example credentials** — `MQTT_USER` and `MQTT_PASSWORD` are set to concrete example values; should use clearly marked placeholders (`<your-mqtt-user>`, etc.) so developers know they must be replaced.
+2. **Combined CA file written to CWD and never deleted** — `mqtt_options.rs` writes `rootca_and_cert.pem` at startup and never removes it after connection.
 
-3. **AMQP connection does not use TLS** — no `amqps://` support; messages (including `api_token`) travel unencrypted over RabbitMQ. Requires infrastructure support for AMQP TLS in the deployment.
-
-4. **Combined CA file written to CWD and never deleted** — `mqtt_options.rs` writes `rootca_and_cert.pem` at startup and never removes it after connection.
-
-5. **Partial path-traversal protection for TLS paths** — `mqtt_options.rs` validates `key_store` and `private_key` paths in `build_ssl_options()`, but `merge_ca_files()` still reads `root_ca` and `mqtt_cert_file` directly.
+3. **Partial path-traversal protection for TLS paths** — `mqtt_options.rs` validates `key_store` and `private_key` paths in `build_ssl_options()`, but `merge_ca_files()` still reads `root_ca` and `mqtt_cert_file` directly.

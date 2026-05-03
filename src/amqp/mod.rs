@@ -1,9 +1,9 @@
 use hmac::{Hmac, KeyInit, Mac};
 use lapin::message::Delivery;
-use lapin::options::{BasicAckOptions, BasicConsumeOptions};
+use lapin::options::{BasicAckOptions, BasicConsumeOptions, ConfirmSelectOptions};
 use lapin::types::ShortString;
 use lapin::{
-    BasicProperties, Channel, Connection, ConnectionProperties, Consumer, Queue,
+    BasicProperties, Channel, Confirmation, Connection, ConnectionProperties, Consumer, Queue,
     options::{BasicPublishOptions, QueueDeclareOptions},
     types::{AMQPValue, FieldTable},
 };
@@ -98,6 +98,18 @@ impl AmqpClient {
     pub async fn connect(&mut self, is_consumer: bool) -> Result<(), AmqpError> {
         info!(target: "app", "connect - trying to connect to amqp_uri={} with queue={}", redact_uri(&self.amqp_uri), &self.amqp_queue_name);
         self.connecting = true;
+        let result = self.do_connect(is_consumer).await;
+        self.connecting = false;
+        if result.is_ok() {
+            info!(target: "app", "connect - AMQP connection done!");
+        }
+        result
+    }
+
+    // Keep the fallible setup steps separate from connect() so connect() can always
+    // reset self.connecting after any early return caused by `?`.
+    // ATTENTION: Please don't put this code inside connect() function as is.
+    async fn do_connect(&mut self, is_consumer: bool) -> Result<(), AmqpError> {
         self.create_connection().await?;
         info!(target: "app", "connect - creating channel...");
         self.create_channel().await?;
@@ -107,8 +119,6 @@ impl AmqpClient {
             info!(target: "app", "connect - creating consumer...");
             self.create_consumer().await?;
         }
-        self.connecting = false;
-        info!(target: "app", "connect - AMQP connection done!");
         Ok(())
     }
 
@@ -134,6 +144,14 @@ impl AmqpClient {
         self.channel = match conn.create_channel().await {
             Ok(channel) => {
                 info!(target: "app", "create_channel - AMQP channel created");
+                channel
+                    .confirm_select(ConfirmSelectOptions::default())
+                    .await
+                    .map_err(|err| {
+                        error!(target: "app", "create_channel - cannot enable publisher confirms. Err = {:?}", err);
+                        AmqpError::ConnectionError("amqp_client publisher confirm setup error".into())
+                    })?;
+                info!(target: "app", "create_channel - publisher confirms enabled");
                 Some(channel)
             }
             Err(err) => {
@@ -151,7 +169,11 @@ impl AmqpClient {
         self.queue = match ch
             .queue_declare(
                 self.amqp_queue_name.clone(),
-                QueueDeclareOptions::default(),
+                // RabbitMQ 4.x rejects transient non-exclusive queues by default; this named shared queue must be durable.
+                QueueDeclareOptions {
+                    durable: true,
+                    ..QueueDeclareOptions::default()
+                },
                 FieldTable::default(),
             )
             .await
@@ -202,6 +224,18 @@ impl AmqpClient {
                 "cannot publish while amqp_client is not initialized".into(),
             ));
         }
+
+        match self.publish_message_once(amqp_queue_name, msg_byte).await {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                error!(target: "app", "publish_message - publish failed, reconnecting and retrying once. Err = {:?}", err);
+                self.reconnect(false).await?;
+                self.publish_message_once(amqp_queue_name, msg_byte).await
+            }
+        }
+    }
+
+    async fn publish_message_once(&mut self, amqp_queue_name: &str, msg_byte: &[u8]) -> Result<(), AmqpError> {
         let channel = self.channel_ref()?.clone();
 
         let signature = compute_hmac(self.hmac_secret.as_bytes(), msg_byte);
@@ -224,7 +258,7 @@ impl AmqpClient {
             // limiting the replay window for captured messages.
             .with_expiration("30000".into());
 
-        let publish_result = channel
+        let publish_confirm = channel
             .basic_publish(
                 "".into(),
                 amqp_queue_name.into(),
@@ -233,12 +267,52 @@ impl AmqpClient {
                 properties,
             )
             .await;
-        if let Err(err) = publish_result {
-            error!(target: "app", "publish_message - cannot publish, waiting for recovery...");
-            Err(self.wait_for_recovery(err).await)
-        } else {
-            Ok(())
+        let publisher_confirm = match publish_confirm {
+            Ok(publisher_confirm) => publisher_confirm,
+            Err(err) => {
+                error!(target: "app", "publish_message - cannot publish, waiting for recovery...");
+                return Err(self.wait_for_recovery(err).await);
+            }
+        };
+
+        match publisher_confirm.await {
+            Ok(Confirmation::Ack(returned_message)) => {
+                if returned_message.is_some() {
+                    error!(target: "app", "publish_message - message was returned by broker");
+                    return Err(AmqpError::ConnectionError("amqp publish returned by broker".into()));
+                }
+                debug!(target: "app", "publish_message - broker confirmed message published to queue {}", amqp_queue_name);
+                Ok(())
+            }
+            Ok(Confirmation::Nack(_)) => {
+                error!(target: "app", "publish_message - broker nacked message");
+                Err(AmqpError::ConnectionError("amqp publish nacked by broker".into()))
+            }
+            Ok(Confirmation::NotRequested) => {
+                error!(target: "app", "publish_message - publisher confirm was not requested");
+                Err(AmqpError::ConnectionError(
+                    "amqp publisher confirm was not requested".into(),
+                ))
+            }
+            Err(err) => {
+                error!(target: "app", "publish_message - publisher confirm failed, waiting for recovery...");
+                Err(self.wait_for_recovery(err).await)
+            }
         }
+    }
+
+    async fn reconnect(&mut self, is_consumer: bool) -> Result<(), AmqpError> {
+        info!(target: "app", "reconnect - rebuilding AMQP connection");
+        if let Some(connection) = self.connection.take()
+            && connection.status().connected()
+            && let Err(err) = connection.close(0, "reconnect".into()).await
+        {
+            error!(target: "app", "reconnect - cannot close existing AMQP connection. Err = {:?}", err);
+        }
+        self.channel = None;
+        self.queue = None;
+        self.consumer = None;
+        self.connect(is_consumer).await
     }
 
     fn is_initialized(&self, level: InitLevel) -> Result<(), AmqpError> {

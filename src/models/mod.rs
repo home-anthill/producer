@@ -38,15 +38,21 @@ where
     let parsed_result = serde_json::from_str::<Notification<T>>(payload_str);
     match parsed_result {
         Ok(val) => {
-            if !is_valid_uuid(&val.api_token) || !is_valid_uuid(&val.device_uuid) || !is_valid_uuid(&val.feature_uuid) {
+            if !is_valid_uuid(&val.device_uuid) || !is_valid_uuid(&val.feature_uuid) {
                 error!(target: "app", "message_payload_to_bytes - invalid UUID in payload fields, dropping message");
+                return None;
+            }
+            if val.timestamp <= 0 || val.nonce.is_empty() || val.signature.is_empty() {
+                error!(target: "app", "message_payload_to_bytes - missing signed envelope fields, dropping message");
                 return None;
             }
             debug!(target: "app", "message_payload_to_bytes - parsed from JSON string, returning as byte array");
             match Message::<T>::new_as_json(
-                val.api_token,
                 val.device_uuid,
                 val.feature_uuid,
+                val.timestamp,
+                val.nonce,
+                val.signature,
                 topic.clone(),
                 val.payload,
             ) {
@@ -81,11 +87,12 @@ mod tests {
         value: T,
         topic: &Topic,
     ) -> String {
-        let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
         json!({
-            "apiToken": api_token,
             "deviceUuid": device_uuid,
             "featureUuid": feature_uuid,
+            "timestamp": 1777630000i64,
+            "nonce": "00112233445566778899aabbccddeeff",
+            "signature": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
             "topic": {
                 "family": topic.family,
                 "deviceId": topic.device_id,

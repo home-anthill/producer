@@ -19,17 +19,22 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
-lapin = { version = "4.3.0" }
-tokio = { version = "^1.50.0", features = ["full"] }
-paho-mqtt = "0.13.3"
+lapin = { version = "4.7.0" }
+tokio = { version = "^1.52.1", features = ["full"] }
+paho-mqtt = "0.14.0"
 futures = "^0.3.32"
+hmac = "^0.13.0"
+sha2 = "^0.11.0"
+hex = "^0.4.3"
+zeroize = { version = "^1.8.2", features = ["serde"] }
+uuid = { version = "^1.23.1", features = ["v4", "fast-rng"] }
 # error handling
 thiserror = "2.0.18"
 anyhow = "1.0.102"
 # logger
 tracing = "^0.1.44"
 tracing-subscriber = { version = "^0.3.23", features = ["env-filter"] }
-tracing-appender = "^0.2.3"
+tracing-appender = "^0.2.5"
 # env vars
 dotenvy = "^0.15.7"
 envy = "^0.4.2"
@@ -40,11 +45,6 @@ envy = "^0.4.2"
 # and enums defined in your crate.
 serde = { version = "^1.0.228", features = ["derive"] }
 serde_json = "^1.0.149"
-hmac = "0.13.0"
-sha2 = "0.11.0"
-hex = "0.4.3"
-zeroize = { version = "1", features = ["serde"] }
-uuid = { version = "1", features = ["v4", "fast-rng"] }
 
 [dev-dependencies]
 # better looking rust assertions

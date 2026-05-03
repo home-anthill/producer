@@ -1,10 +1,14 @@
 # Changelog (Claude)
 
-## 2026-05-01 Documentation Refresh
+## 2026-05-02 AMQP Confirm and Signed Envelope Update
 
-- **Claude guidance aligned with current config** — `CLAUDE.md` now includes `AMQP_HMAC_SECRET` in the documented runtime environment and notes that `.env_template` has `LOG_LEVEL`, although the current `Env` struct does not consume it.
-- **Project naming clarified** — Documented the distinction between the Cargo package name (`ks89-producer`) and the binary/library crate name (`producer`).
-- **Open issues refreshed** — Updated stale paths and credential values in the integration-test credential issue, clarified that `.env_template` still contains concrete example credentials, and corrected the TLS CA-file/path-traversal notes to match `mqtt_options.rs`.
+- **Publisher confirms enabled** — AMQP channels now call `confirm_select()` and each publish waits for broker confirmation. Returned messages, `Nack`, missing confirm mode, and confirm failures are treated as publish errors instead of assuming the broker accepted the message.
+- **Publish retry tightened** — `publish_message()` now retries a failed publish once after rebuilding the AMQP connection, while preserving the existing initialization guard.
+- **Durable queue declaration documented in code path** — Queue declaration now explicitly sets `durable: true`, matching RabbitMQ 4.x behavior for named shared queues.
+- **MQTT envelope changed** — Inbound MQTT notifications and outbound AMQP messages no longer carry `apiToken`. The bridge now requires and forwards `timestamp`, `nonce`, and `signature`, dropping messages with missing or invalid signed-envelope fields.
+- **Integration-test MQTT credentials externalized** — `receive_message_via_mqtt` now reads `MQTT_PUBLISH_USER` and `MQTT_PUBLISH_PASSWORD`, with local defaults for the Mosquitto ACL test user, instead of hardcoding the old `mosquser` credentials.
+- **Integration-test client ids isolated** — MQTT integration tests suffix the configured client id with a fresh UUID to avoid persistent-session collisions between test runs.
+- **Dependency versions refreshed** — `lapin`, `tokio`, `paho-mqtt`, `tracing-appender`, `uuid`, `zeroize`, `hmac`, `sha2`, and `hex` were updated or normalized in `Cargo.toml`.
 
 ## Security
 
@@ -12,7 +16,7 @@
 - **Secret zeroing** — `amqp_uri`, `amqp_hmac_secret`, `mqtt_user`, and `mqtt_password` are wrapped in `Zeroizing<String>` in both `Env` and `AmqpClient`, so secrets are wiped from memory on drop.
 - **HMAC-SHA256 message authentication** — Every AMQP message carries an `x-hmac-sha256` header computed from the payload using `AMQP_HMAC_SECRET`, allowing consumers to verify integrity and origin. The MQTT Last-Will-and-Testament payload is similarly signed so consumers can detect spoofed disconnect notifications.
 - **Replay-attack mitigations** — Each published AMQP message includes a `uuid::Uuid::new_v4()` as `message_id` and a Unix timestamp in `BasicProperties`. A 30-second per-message TTL (`.with_expiration("30000")`) limits the effective replay window; RabbitMQ dead-letters expired messages automatically.
-- **Input validation** — `Topic::new()` enforces a 255-byte length cap per segment, requires `device_id` to be a valid non-nil UUID, and whitelists `feature_name` against known sensor types. UUIDs in the MQTT payload (`api_token`, `device_uuid`, `feature_uuid`) are validated and nil-UUID values are rejected. `AMQP_QUEUE_NAME` is checked at startup for length (1–255) and RabbitMQ-safe characters.
+- **Input validation** — `Topic::new()` enforces a 255-byte length cap per segment, requires `device_id` to be a valid non-nil UUID, and whitelists `feature_name` against known sensor types. UUIDs in the MQTT payload (`device_uuid`, `feature_uuid`) are validated and nil-UUID values are rejected. `AMQP_QUEUE_NAME` is checked at startup for length (1–255) and RabbitMQ-safe characters.
 - **Payload size limit** — `get_bytes_from_payload()` rejects payloads larger than 65 536 bytes before any processing, preventing memory pressure from malicious publishers.
 - **TLS hardening** — `.enable_server_cert_auth(true)` is set on `SslOptionsBuilder` to require broker certificate verification. TLS certificate paths are resolved to absolute paths via `env::current_dir()` and guarded against `..` path-traversal components.
 - **Sensitive data removed from logs** — `debug!` calls that logged the full raw MQTT payload (containing `apiToken`) and the full `payload_str` were removed.

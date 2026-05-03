@@ -48,16 +48,17 @@ mod tests {
     use std::str::from_utf8;
 
     fn get_expected_json_string<T: Serialize>(
-        api_token: &str,
         device_uuid: &str,
         feature_uuid: &str,
         value: T,
         topic: &Topic,
     ) -> String {
         json!({
-            "apiToken": api_token,
             "deviceUuid": device_uuid,
             "featureUuid": feature_uuid,
+            "timestamp": 1777630000i64,
+            "nonce": "00112233445566778899aabbccddeeff",
+            "signature": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
             "topic": {
                 "family": topic.family,
                 "deviceId": topic.device_id,
@@ -76,19 +77,18 @@ mod tests {
 
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
-        let api_token = "473a4861-632b-4915-b01e-cf1d418966c6";
         let sensor_type = "temperature";
         let value = 12.23;
         let topic: Topic = Topic::new(format!("sensors/{}/{}", device_uuid, sensor_type).as_str()).unwrap();
         let msg_payload = format!(
-            r#"{{"deviceUuid":"{device_uuid}", "featureUuid":"{feature_uuid}", "apiToken":"{api_token}","payload":{{"value":{value}}}}}"#
+            r#"{{"deviceUuid":"{device_uuid}", "featureUuid":"{feature_uuid}", "timestamp":1777630000, "nonce":"00112233445566778899aabbccddeeff", "signature":"aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899","payload":{{"value":{value}}}}}"#
         );
         let msg_byte_arr = get_msg_byte(&topic, msg_payload.as_str()).expect("expected Some bytes");
         let message = Message::new(format!("sensors/{}/{}", device_uuid, sensor_type), msg_byte_arr, 0);
 
         let bytes = get_bytes_from_payload(&message).expect("expected Some bytes");
         let result = from_utf8(bytes.as_slice()).unwrap();
-        let expected_value = get_expected_json_string::<f64>(api_token, device_uuid, feature_uuid, value, &topic);
+        let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, value, &topic);
         assert_eq!(result.to_string(), expected_value);
     }
 }

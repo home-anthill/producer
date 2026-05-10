@@ -12,6 +12,7 @@
 
 ## Security
 
+- **Signed envelope validation tightened** — MQTT notifications must carry a 32-character lowercase-hex nonce and 64-character lowercase-hex signature before the producer forwards them to AMQP.
 - **Credential redaction** — AMQP URIs are scrubbed of embedded credentials before logging (`redact_uri()`). MQTT username and password are printed as `[REDACTED]` in logs and debug output. A hand-written `fmt::Debug` for `Env` redacts all four secret fields (`amqp_uri`, `amqp_hmac_secret`, `mqtt_user`, `mqtt_password`).
 - **Secret zeroing** — `amqp_uri`, `amqp_hmac_secret`, `mqtt_user`, and `mqtt_password` are wrapped in `Zeroizing<String>` in both `Env` and `AmqpClient`, so secrets are wiped from memory on drop.
 - **HMAC-SHA256 message authentication** — Every AMQP message carries an `x-hmac-sha256` header computed from the payload using `AMQP_HMAC_SECRET`, allowing consumers to verify integrity and origin. The MQTT Last-Will-and-Testament payload is similarly signed so consumers can detect spoofed disconnect notifications.

@@ -14,8 +14,22 @@ pub mod notification;
 pub mod payload_trait;
 pub mod topic;
 
+const SIGNED_NONCE_HEX_LEN: usize = 32;
+const SIGNED_SIGNATURE_HEX_LEN: usize = 64;
+
 pub(crate) fn is_valid_uuid(s: &str) -> bool {
     uuid::Uuid::parse_str(s).is_ok_and(|u| !u.is_nil())
+}
+
+fn is_lower_hex(value: &str, expected_len: usize) -> bool {
+    value.len() == expected_len
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+fn has_valid_signed_envelope(timestamp: i64, nonce: &str, signature: &str) -> bool {
+    timestamp > 0 && is_lower_hex(nonce, SIGNED_NONCE_HEX_LEN) && is_lower_hex(signature, SIGNED_SIGNATURE_HEX_LEN)
 }
 
 pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Option<Vec<u8>> {
@@ -42,8 +56,8 @@ where
                 error!(target: "app", "message_payload_to_bytes - invalid UUID in payload fields, dropping message");
                 return None;
             }
-            if val.timestamp <= 0 || val.nonce.is_empty() || val.signature.is_empty() {
-                error!(target: "app", "message_payload_to_bytes - missing signed envelope fields, dropping message");
+            if !has_valid_signed_envelope(val.timestamp, &val.nonce, &val.signature) {
+                error!(target: "app", "message_payload_to_bytes - invalid signed envelope fields, dropping message");
                 return None;
             }
             debug!(target: "app", "message_payload_to_bytes - parsed from JSON string, returning as byte array");
@@ -173,5 +187,45 @@ mod tests {
         // float value for a motion (integer) sensor → parse fails → None
         let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, 5.0, &topic);
         assert!(get_msg_byte(&topic, expected_value.as_str()).is_none());
+    }
+
+    #[test]
+    fn wrong_get_msg_byte_bad_signed_nonce() {
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
+        let value = json!({
+            "deviceUuid": device_uuid,
+            "featureUuid": feature_uuid,
+            "timestamp": 1777630000i64,
+            "nonce": "00112233-4455-6677-8899-aabbccddeeff",
+            "signature": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+            "payload": {
+                "value": 21.0
+            }
+        })
+        .to_string();
+
+        assert!(get_msg_byte(&topic, value.as_str()).is_none());
+    }
+
+    #[test]
+    fn wrong_get_msg_byte_bad_signed_signature() {
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
+        let value = json!({
+            "deviceUuid": device_uuid,
+            "featureUuid": feature_uuid,
+            "timestamp": 1777630000i64,
+            "nonce": "00112233445566778899aabbccddeeff",
+            "signature": "not-hex",
+            "payload": {
+                "value": 21.0
+            }
+        })
+        .to_string();
+
+        assert!(get_msg_byte(&topic, value.as_str()).is_none());
     }
 }

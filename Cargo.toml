@@ -1,6 +1,6 @@
 [package]
 name = "ks89-producer"
-version = "3.0.0"
+version = "4.0.0"
 edition = "2024"
 resolver = "3"
 
@@ -19,8 +19,8 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
-lapin = { version = "4.7.0" }
-tokio = { version = "^1.52.1", features = ["full"] }
+lapin = { version = "4.10.0" }
+tokio = { version = "^1.52.3", features = ["full"] }
 paho-mqtt = "0.14.0"
 futures = "^0.3.32"
 hmac = "^0.13.0"
@@ -44,12 +44,12 @@ envy = "^0.4.2"
 # using #[derive(Serialize, Deserialize)] to make Serde work with structs
 # and enums defined in your crate.
 serde = { version = "^1.0.228", features = ["derive"] }
-serde_json = "^1.0.149"
+serde_json = "^1.0.150"
 
 [dev-dependencies]
 # better looking rust assertions
 pretty_assertions = "^1.4.1"
 # include also serde_json with the feature 'preserve_order' to don't change the order of keys
 # 'preserve_order' is required to compare results in a predictible way in testing
-serde_json = { version = "^1.0.149", features = ["preserve_order"] }
-test-log = {version = "0.2.19", features = ["trace"]}
+serde_json = { version = "^1.0.150", features = ["preserve_order"] }
+test-log = {version = "0.2.20", features = ["trace"]}

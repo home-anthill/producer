@@ -393,21 +393,22 @@ pub async fn read_message(delivery: &Delivery) -> Result<&str, AmqpError> {
 #[cfg(test)]
 mod tests {
     use crate::amqp::AmqpClient;
-    use crate::config::{Env, init};
     use crate::errors::amqp_error::AmqpError;
     use pretty_assertions::assert_eq;
     use zeroize::Zeroizing;
 
-    #[test]
-    #[test_log::test]
-    fn wrong_is_initialized() {
-        let env: Env = init();
-        let amqp_client = AmqpClient::new(
-            env.amqp_uri.clone(),
-            env.amqp_queue_name.clone(),
-            Zeroizing::new(String::new()),
+    fn new_uninitialized_client() -> AmqpClient {
+        AmqpClient::new(
+            Zeroizing::new("amqp://guest:guest@localhost:5672/%2f".to_string()),
+            "test.queue".to_string(),
+            Zeroizing::new("secret".to_string()),
         )
-        .consumer("consumer-tag".to_string());
+        .consumer("consumer-tag".to_string())
+    }
+
+    #[test]
+    fn wrong_is_initialized() {
+        let amqp_client = new_uninitialized_client();
 
         // When nothing is initialized, all levels fail at the connection check
         for level in [
@@ -422,5 +423,44 @@ mod tests {
                 AmqpError::Uninitialized("amqp_client connection not initialized".into()).to_string()
             );
         }
+    }
+
+    #[test]
+    fn wrong_is_connected_without_connection() {
+        let amqp_client = new_uninitialized_client();
+
+        assert!(!amqp_client.is_connected(false));
+        assert!(!amqp_client.is_connected(true));
+    }
+
+    #[tokio::test]
+    async fn wrong_publish_message_while_connecting() {
+        let mut amqp_client = new_uninitialized_client();
+        amqp_client.connecting = true;
+
+        let err = amqp_client
+            .publish_message("test.queue", b"message")
+            .await
+            .expect_err("publish should fail while the client is connecting");
+
+        assert_eq!(
+            err.to_string(),
+            AmqpError::Uninitialized("cannot publish while amqp_client is not initialized".into()).to_string()
+        );
+    }
+
+    #[tokio::test]
+    async fn wrong_close_connection_without_connection() {
+        let mut amqp_client = new_uninitialized_client();
+
+        let err = amqp_client
+            .close_connection()
+            .await
+            .expect_err("close should fail before the connection is initialized");
+
+        assert_eq!(
+            err.to_string(),
+            AmqpError::Uninitialized("amqp_client connection not initialized".into()).to_string()
+        );
     }
 }

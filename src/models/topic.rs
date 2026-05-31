@@ -73,7 +73,6 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    #[test_log::test]
     fn check_topic_display() {
         let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let sensor_type = "temperature";
@@ -81,5 +80,33 @@ mod tests {
         let topic: Topic = Topic::new(format!("sensors/{}/{}", uuid, sensor_type).as_str()).unwrap();
         let expected = topic.to_string();
         assert_eq!(format!("sensors/{}/{}", uuid, sensor_type), expected);
+    }
+
+    #[test]
+    fn rejects_invalid_topics() {
+        let uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let long_segment = "a".repeat(256);
+        let cases = [
+            ("sensors/temperature".to_string(), "expected 3 segments"),
+            ("sensors//temperature".to_string(), "contains empty segments"),
+            (
+                format!("sensors/{}/{}", uuid, long_segment),
+                "contains a segment longer than 255 bytes",
+            ),
+            ("sensors/not-a-uuid/temperature".to_string(), "is not a valid UUID"),
+            (
+                "sensors/00000000-0000-0000-0000-000000000000/temperature".to_string(),
+                "is not a valid UUID",
+            ),
+            (format!("sensors/{}/unknown", uuid), "is not a known sensor type"),
+        ];
+
+        for (topic, expected_error) in cases {
+            let err = Topic::new(&topic).expect_err("topic should be rejected");
+            assert!(
+                err.contains(expected_error),
+                "expected '{err}' to contain '{expected_error}'"
+            );
+        }
     }
 }

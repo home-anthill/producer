@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -97,7 +97,7 @@ Multi-stage Dockerfile using `cargo-chef` for dependency caching. Final stage us
 
 ## Security & Maintenance
 
-See `CHANGELOG_CLAUDE.md` for a comprehensive log of security fixes and recent improvements. Notable recent work includes HMAC-SHA256 message authentication, exponential backoff hardening, and secret zeroing.
+See `CHANGELOG.md` for a comprehensive log of security fixes and recent improvements. Notable recent work includes HMAC-SHA256 message authentication, exponential backoff hardening, and secret zeroing.
 
 ### Known Open Issues
 

@@ -37,7 +37,6 @@ fn get_string_payload(msg: &Message) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::init;
     use crate::models::get_msg_byte;
     use crate::models::topic::Topic;
     use crate::mqtt::get_bytes_from_payload;
@@ -73,8 +72,6 @@ mod tests {
 
     #[test]
     fn ok_get_bytes_from_payload() {
-        let _ = init();
-
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         let sensor_type = "temperature";
@@ -90,5 +87,45 @@ mod tests {
         let result = from_utf8(bytes.as_slice()).unwrap();
         let expected_value = get_expected_json_string::<f64>(device_uuid, feature_uuid, value, &topic);
         assert_eq!(result.to_string(), expected_value);
+    }
+
+    #[test]
+    fn wrong_get_bytes_from_payload_invalid_utf8() {
+        let message = Message::new(
+            "sensors/246e3256-f0dd-4fcb-82c5-ee20c2267eeb/temperature",
+            vec![0xff],
+            0,
+        );
+
+        assert!(get_bytes_from_payload(&message).is_none());
+    }
+
+    #[test]
+    fn wrong_get_bytes_from_payload_invalid_topic() {
+        let message = Message::new("sensors/not-a-uuid/temperature", "{}", 0);
+
+        assert!(get_bytes_from_payload(&message).is_none());
+    }
+
+    #[test]
+    fn wrong_get_bytes_from_payload_too_large() {
+        let message = Message::new(
+            "sensors/246e3256-f0dd-4fcb-82c5-ee20c2267eeb/temperature",
+            vec![b'a'; 65_537],
+            0,
+        );
+
+        assert!(get_bytes_from_payload(&message).is_none());
+    }
+
+    #[test]
+    fn wrong_get_bytes_from_payload_bad_json() {
+        let message = Message::new(
+            "sensors/246e3256-f0dd-4fcb-82c5-ee20c2267eeb/temperature",
+            "{\"deviceUuid\":",
+            0,
+        );
+
+        assert!(get_bytes_from_payload(&message).is_none());
     }
 }

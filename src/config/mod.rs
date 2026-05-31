@@ -96,12 +96,12 @@ pub fn init() -> Env {
             .with_filter(|meta| meta.target() == "app")
             .with_max_level(tracing::Level::ERROR);
         let writer = info_file.and(error_file).and(stdout);
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .compact()
             .with_writer(writer)
             .with_ansi(false)
             .with_max_level(tracing::Level::DEBUG)
-            .init();
+            .try_init();
     }
 
     info!(target: "app", "Starting application...");

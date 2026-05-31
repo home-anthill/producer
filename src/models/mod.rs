@@ -86,7 +86,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::config::init;
     use crate::models::get_msg_byte;
     use crate::models::topic::Topic;
     use pretty_assertions::assert_eq;
@@ -121,8 +120,6 @@ mod tests {
 
     #[test]
     fn ok_get_msg_byte_sensors() {
-        let _ = init();
-
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         const FLOAT_SENSORS: &[&str] = &["temperature", "humidity", "light", "airpressure"];
@@ -157,8 +154,6 @@ mod tests {
 
     #[test]
     fn wrong_get_msg_byte_unknown_sensor() {
-        let _ = init();
-
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         // H5: Topic::new now rejects unknown feature names at construction time.
         let topic_result = Topic::new(format!("sensors/{}/unknown_type", device_uuid).as_str());
@@ -170,8 +165,6 @@ mod tests {
 
     #[test]
     fn wrong_get_msg_byte_bad_json_message() {
-        let _ = init();
-
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
         assert!(get_msg_byte(&topic, "{\"deviceUuid\": \"1234\", 12}").is_none());
@@ -179,8 +172,6 @@ mod tests {
 
     #[test]
     fn wrong_get_msg_byte_bad_value_format() {
-        let _ = init();
-
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         let topic: Topic = Topic::new(format!("sensors/{}/motion", device_uuid).as_str()).unwrap();
@@ -220,6 +211,55 @@ mod tests {
             "timestamp": 1777630000i64,
             "nonce": "00112233445566778899aabbccddeeff",
             "signature": "not-hex",
+            "payload": {
+                "value": 21.0
+            }
+        })
+        .to_string();
+
+        assert!(get_msg_byte(&topic, value.as_str()).is_none());
+    }
+
+    #[test]
+    fn wrong_get_msg_byte_bad_payload_uuid_fields() {
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
+        let cases = [
+            ("not-a-uuid", feature_uuid),
+            ("00000000-0000-0000-0000-000000000000", feature_uuid),
+            (device_uuid, "not-a-uuid"),
+            (device_uuid, "00000000-0000-0000-0000-000000000000"),
+        ];
+
+        for (payload_device_uuid, payload_feature_uuid) in cases {
+            let value = json!({
+                "deviceUuid": payload_device_uuid,
+                "featureUuid": payload_feature_uuid,
+                "timestamp": 1777630000i64,
+                "nonce": "00112233445566778899aabbccddeeff",
+                "signature": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+                "payload": {
+                    "value": 21.0
+                }
+            })
+            .to_string();
+
+            assert!(get_msg_byte(&topic, value.as_str()).is_none());
+        }
+    }
+
+    #[test]
+    fn wrong_get_msg_byte_bad_timestamp() {
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic: Topic = Topic::new(format!("sensors/{}/temperature", device_uuid).as_str()).unwrap();
+        let value = json!({
+            "deviceUuid": device_uuid,
+            "featureUuid": feature_uuid,
+            "timestamp": 0,
+            "nonce": "00112233445566778899aabbccddeeff",
+            "signature": "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
             "payload": {
                 "value": 21.0
             }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.1
+
+### Tests
+
+- Added AMQP unit coverage for uninitialized clients, connection-state checks, publishing while reconnecting, and closing before a connection exists.
+- Added model validation coverage for malformed payload UUIDs, nil UUIDs, and invalid timestamps.
+- Added topic parsing rejection cases for malformed topic shapes, empty segments, overlong segments, invalid UUIDs, nil UUIDs, and unknown sensor types.
+- Added MQTT payload handling coverage for invalid UTF-8, invalid topics, oversized payloads, and malformed JSON.
+- Added MQTT options coverage for Last Will payload JSON/signature generation and TLS option validation failures.
+
+
 ## 4.0.0
 
 ### Features

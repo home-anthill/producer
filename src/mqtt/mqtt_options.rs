@@ -166,3 +166,40 @@ impl MqttOptions {
         Ok(ssl_opts)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::mqtt::mqtt_options::{MqttOptions, build_lwt_payload};
+    use serde_json::Value;
+
+    #[test]
+    fn build_lwt_payload_contains_status_and_signature() {
+        let payload = build_lwt_payload(b"secret");
+        let value: Value = serde_json::from_str(&payload).expect("LWT payload should be valid JSON");
+
+        assert_eq!(value["status"], "lost connection");
+        assert_eq!(
+            value["hmac-sha256"]
+                .as_str()
+                .expect("signature should be a string")
+                .len(),
+            64
+        );
+    }
+
+    #[test]
+    fn wrong_build_ssl_options_missing_trust_store() {
+        let err = MqttOptions::build_ssl_options("cert.pem", "key.pem", "missing-ca.pem")
+            .expect_err("missing trust store should fail");
+
+        assert!(err.to_string().contains("trust_store"));
+    }
+
+    #[test]
+    fn wrong_build_ssl_options_rejects_parent_dir_cert_path() {
+        let err = MqttOptions::build_ssl_options("../cert.pem", "key.pem", "ca.pem")
+            .expect_err("parent directory in certificate path should fail");
+
+        assert!(err.to_string().contains("must not contain '..'"));
+    }
+}

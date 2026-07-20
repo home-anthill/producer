@@ -124,7 +124,7 @@ mod tests {
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         const FLOAT_SENSORS: &[&str] = &["temperature", "humidity", "light", "airpressure"];
-        const INT_SENSORS: &[&str] = &["motion", "airquality", "mode"];
+        const INT_SENSORS: &[&str] = &["motion", "airquality"];
         const VALUE_FLOAT: f64 = 12.0;
         const VALUE_INT: i64 = 1;
 
@@ -150,6 +150,25 @@ mod tests {
             debug!(target: "app", "result = {}", result);
             debug!(target: "app", "expected_value = {}", expected_value);
             assert_eq!(result.to_string(), expected_value);
+        }
+
+        let topic = Topic::new(format!("sensors/{device_uuid}/mode").as_str()).unwrap();
+        for value in [-1.0, 0.0, 1.0, 2.0] {
+            let expected_value = get_expected_json_string(device_uuid, feature_uuid, value, &topic);
+            let bytes = get_msg_byte(&topic, expected_value.as_str()).expect("expected admitted mode value");
+            assert_eq!(from_utf8(&bytes).unwrap(), expected_value);
+        }
+    }
+
+    #[test]
+    fn wrong_get_msg_byte_rejects_invalid_mode_values() {
+        let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
+        let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
+        let topic = Topic::new(format!("sensors/{device_uuid}/mode").as_str()).unwrap();
+
+        for value in [-2.0, -0.5, 0.5, 3.0] {
+            let payload = get_expected_json_string(device_uuid, feature_uuid, value, &topic);
+            assert!(get_msg_byte(&topic, payload.as_str()).is_none());
         }
     }
 

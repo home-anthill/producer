@@ -19,7 +19,7 @@ GitHub releases [HERE](https://github.com/home-anthill/producer/releases)
 
 Versions:
 
-- ??/06/2026 - 4.0.1
+- ??/07/2026 - 4.1.0
 - 28/05/2026 - 4.0.0
 - 16/03/2026 - 3.0.1
 - 12/03/2026 - 3.0.0

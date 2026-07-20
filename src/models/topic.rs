@@ -11,6 +11,7 @@ const KNOWN_FEATURES: &[&str] = &[
     "airpressure",
     "motion",
     "airquality",
+    "mode",
     "online",
 ];
 const MAX_SEGMENT_BYTES: usize = 255;

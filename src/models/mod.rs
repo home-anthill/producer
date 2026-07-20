@@ -5,7 +5,7 @@ use tracing::{debug, error};
 use crate::models::message::Message;
 use crate::models::notification::Notification;
 use crate::models::payload_trait::{
-    AirPressure, AirQuality, Humidity, Light, Motion, Online, PayloadTrait, Temperature,
+    AirPressure, AirQuality, Humidity, Light, Mode, Motion, Online, PayloadTrait, Temperature,
 };
 use crate::models::topic::Topic;
 
@@ -40,6 +40,7 @@ pub fn get_msg_byte(topic: &Topic, payload_str: &str) -> Option<Vec<u8>> {
         "motion" => message_payload_to_bytes::<Motion>(payload_str, topic),
         "airquality" => message_payload_to_bytes::<AirQuality>(payload_str, topic),
         "airpressure" => message_payload_to_bytes::<AirPressure>(payload_str, topic),
+        "mode" => message_payload_to_bytes::<Mode>(payload_str, topic),
         "online" => message_payload_to_bytes::<Online>(payload_str, topic),
         _ => None,
     }
@@ -123,7 +124,7 @@ mod tests {
         let device_uuid = "246e3256-f0dd-4fcb-82c5-ee20c2267eeb";
         let feature_uuid = "41cb3f47-894c-45e9-90d9-a4d4de903896";
         const FLOAT_SENSORS: &[&str] = &["temperature", "humidity", "light", "airpressure"];
-        const INT_SENSORS: &[&str] = &["motion", "airquality"];
+        const INT_SENSORS: &[&str] = &["motion", "airquality", "mode"];
         const VALUE_FLOAT: f64 = 12.0;
         const VALUE_INT: i64 = 1;
 

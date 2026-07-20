@@ -34,4 +34,5 @@ payload_type!(Light, f64);
 payload_type!(AirPressure, f64);
 payload_type!(Motion, i64);
 payload_type!(AirQuality, i64);
+payload_type!(Mode, i64);
 payload_type!(Online, bool);

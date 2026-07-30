@@ -78,7 +78,7 @@ This project is both a **binary** (`producer` — the bridge service) and a **li
 - **`errors/`** — Custom error types (`AmqpError`, `MqttError`, `MessageError`) using `thiserror`.
 - **`tests_integration/`** — Integration tests (declared in `main.rs` via `#[cfg(test)]`). Requires real MQTT and RabbitMQ brokers.
 
-**Replay boundary:** Producer-generated AMQP `message_id` values are operational metadata only. Security replay protection is based on the signed MQTT `nonce` and is enforced downstream by `consumer` / `online-receiver` using Redis `SET NX EX`.
+**Replay boundary:** Producer-generated AMQP `message_id` values are operational metadata only. Security replay protection is based on the signed MQTT `nonce` and is enforced downstream by `consumer` / `alarm-receiver` using Redis `SET NX EX`.
 
 ### Environment Variables
 

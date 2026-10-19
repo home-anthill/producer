@@ -1,6 +1,6 @@
 [package]
 name = "ks89-producer"
-version = "4.1.0"
+version = "5.0.0"
 edition = "2024"
 resolver = "3"
 
@@ -19,17 +19,17 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
-lapin = { version = "4.10.0" }
-tokio = { version = "^1.53.1", features = ["full"] }
+lapin = { version = "4.12.3" }
+tokio = { version = "^1.54.0", features = ["full"] }
 paho-mqtt = "0.14.0"
 futures = "^0.3.34"
 hmac = "^0.13.0"
-sha2 = "^0.11.0"
+sha2 = "^0.11.1"
 hex = "^0.4.3"
-zeroize = { version = "^1.9.0", features = ["serde"] }
-uuid = { version = "^1.26.0", features = ["v4", "fast-rng"] }
+zeroize = { version = "^1.9.1", features = ["serde"] }
+uuid = { version = "^1.28.0", features = ["v4", "fast-rng"] }
 # error handling
-thiserror = "2.0.20"
+thiserror = "2.0.21"
 anyhow = "1.0.104"
 # logger
 tracing = "^0.1.44"
@@ -44,12 +44,12 @@ envy = "^0.4.2"
 # using #[derive(Serialize, Deserialize)] to make Serde work with structs
 # and enums defined in your crate.
 serde = { version = "^1.0.229", features = ["derive"] }
-serde_json = "^1.0.151"
+serde_json = "^1.0.154"
 
 [dev-dependencies]
 # better looking rust assertions
 pretty_assertions = "^1.4.1"
 # include also serde_json with the feature 'preserve_order' to don't change the order of keys
 # 'preserve_order' is required to compare results in a predictible way in testing
-serde_json = { version = "^1.0.151", features = ["preserve_order"] }
+serde_json = { version = "^1.0.154", features = ["preserve_order"] }
 test-log = {version = "0.2.21", features = ["trace"]}

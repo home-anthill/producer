@@ -42,6 +42,13 @@ payload_type!(Temperature, f64);
 payload_type!(Humidity, f64);
 payload_type!(Light, f64);
 payload_type!(AirPressure, f64);
+payload_type!(Iaq, f64);
+payload_type!(Voc, f64);
+payload_type!(Eco2, f64);
+payload_type!(Altitude, f64);
+payload_type!(Ph, f64);
+payload_type!(Co2, f64);
+payload_type!(Level, i64);
 payload_type!(Motion, i64);
 payload_type!(AirQuality, i64);
 

@@ -28,6 +28,13 @@ const TOPICS: &[&str] = &[
     "sensors/+/motion",
     "sensors/+/airquality",
     "sensors/+/airpressure",
+    "sensors/+/iaq",
+    "sensors/+/voc",
+    "sensors/+/eco2",
+    "sensors/+/altitude",
+    "sensors/+/co2",
+    "sensors/+/level",
+    "sensors/+/ph",
     "sensors/+/mode",
     "sensors/+/online",
 ];
